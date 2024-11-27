@@ -1,3 +1,14 @@
+# data folder
+/data/parking
+/data/kitti
+/data/malaga
+
+# project statement
+vo_project_statement.pdf
+
+# jupyter notebooks
+*.ipynb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
