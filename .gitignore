@@ -1,7 +1,9 @@
 # data folder
+data/
 /data/parking
 /data/kitti
 /data/malaga
+data/malaga-urban-dataset-extract-07 
 
 # project statement
 vo_project_statement.pdf
