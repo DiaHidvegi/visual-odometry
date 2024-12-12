@@ -14,7 +14,7 @@ def main():
                   [ 0, 707.09, 183.11],
                   [ 0,  0,  1]])
     
-    init = Initialization(img1, img2, K, show_plots=False)
+    init = Initialization('kitti', show_plots=False)
     state0 = FrameState(
         landmarks_image=init.points2D, 
         landmarks_world=init.points3D, 
@@ -27,9 +27,9 @@ def main():
 
     ## Continous with prior initialization
 
-    #delete if initialization is working
-    points2D = np.loadtxt("data/kitti2/keypoints.txt").T
-    points3D = np.loadtxt("data/kitti2/p_W_landmarks.txt").T
+    data_choice = "kitti"
+    initialization = Initialization(data_choice, False)
+    points3D, points2D = initialization.get_initial_landmarks()
 
     state0 = FrameState(
         landmarks_image=points2D, 
@@ -44,10 +44,10 @@ def main():
 
     frame_state = state0
 
-    for i in range(2, 10):
+    for i in range(1, 10):
         #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
-        image_path_prev = f"data/kitti2/05/image_0/{str(i-1).zfill(6)}.png"
-        image_path_current = f"data/kitti2/05/image_0/{str(i).zfill(6)}.png"
+        image_path_prev = f"data/kitti/05/image_0/{str(i-1).zfill(6)}.png"
+        image_path_current = f"data/kitti/05/image_0/{str(i).zfill(6)}.png"
         img_prev = cv2.imread(image_path_prev)
         img_current = cv2.imread(image_path_current)
 

@@ -107,7 +107,7 @@ class ContinuousVO:
             Tuple[np.ndarray, np.ndarray]:
                 Pose as a 4x4 transformation matrix and inlier mask.
         """
-        points2D = np.flip(points2D, axis=0)
+        #points2D = np.flip(points2D, axis=0)
         points2D = points2D.T
         
         success, rvec, tvec, inliers = cv2.solvePnPRansac(
@@ -151,7 +151,7 @@ class ContinuousVO:
         max_num_inliers = 0
 
         # Flip keypoints to (u, v) format
-        matched_query_keypoints = np.flip(matched_query_keypoints, axis=0)
+        #matched_query_keypoints = np.flip(matched_query_keypoints, axis=0)
 
         for _ in range(num_iterations):
             # Randomly sample k points
