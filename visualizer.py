@@ -85,7 +85,7 @@ class Visualizer:
         else:
             self.image_display.set_data(image)
             self.points_plot_lm.set_data(frame_state.landmarks_image[:,0], frame_state.landmarks_image[:,1])
-            self.points_plot_cnd.set_data(frame_state.cand_landmarks_image_current[:,0], frame_state.cand_landmarks_image_current[:,1])
+            #self.points_plot_cnd.set_data(frame_state.cand_landmarks_image_current[:,0], frame_state.cand_landmarks_image_current[:,1])
         self.image_ax.axis('off')
 
         # Show updated plots
