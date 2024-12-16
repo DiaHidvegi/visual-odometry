@@ -19,7 +19,7 @@ class Visualizer:
         # initialize data storage
         self.landmarks_data = []
         self.candidates_data = []
-        self.poses = np.zeros((0, 12))
+        self.poses = np.zeros((1, 12))
 
         # initialize interactive mode
         plt.tight_layout()
@@ -51,9 +51,17 @@ class Visualizer:
             self.local_points_scatter = self.local_trajectory_ax.scatter([], [], color='green', label="Landmarks")
             self.local_trajectory_ax.set_title("Local Trajectory")
         self.local_trajectory_line.set_data(self.poses[frame_start:frame_end, 3], self.poses[frame_start:frame_end, 11])
-        self.local_points_scatter.set_offsets(frame_state.landmarks_world[:, [0, 2]])
-        self.local_trajectory_ax.relim()
-        self.local_trajectory_ax.autoscale_view()
+        
+        # Update scatter points data
+        self.local_points_scatter.set_offsets(frame_state.landmarks_world[[0, 2], :].T)  # Transpose for scatter
+
+        x_min, x_max, y_min, y_max = self.determine_lims(frame_state, frame_start, frame_end)
+
+        # Update axis limits manually  (overwritten by set_aspect but adding all 3 seems best)
+        self.local_trajectory_ax.set_xlim(x_min, x_max)
+        self.local_trajectory_ax.set_ylim(y_min, y_max)
+
+        # enforce equal aspect ratio (overwrites xlim and ylim but adding all 3 seems best)
         self.local_trajectory_ax.set_aspect('equal', adjustable='datalim')
 
         # Update global trajectory
@@ -80,17 +88,42 @@ class Visualizer:
         if not hasattr(self, 'image_display'):
             self.image_display = self.image_ax.imshow(image, animated=False)
             self.image_ax.set_title("Current Frame")
-            self.points_plot_lm, = self.image_ax.plot([], [], 'go', markersize=10)
-            self.points_plot_cnd, = self.image_ax.plot([], [], 'rx', markersize=10)
+            self.points_plot_lm, = self.image_ax.plot([], [], 'go', markersize=2)
+            self.points_plot_cnd, = self.image_ax.plot([], [], 'rx', markersize=2)
         else:
             self.image_display.set_data(image)
-            self.points_plot_lm.set_data(frame_state.landmarks_image[:,0], frame_state.landmarks_image[:,1])
-            #self.points_plot_cnd.set_data(frame_state.cand_landmarks_image_current[:,0], frame_state.cand_landmarks_image_current[:,1])
+            self.points_plot_lm.set_data(frame_state.landmarks_image[0,:], frame_state.landmarks_image[1,:])
+            #self.points_plot_cnd.set_data(frame_state.cand_landmarks_image_current[1,:], frame_state.cand_landmarks_image_current[1,:])
         self.image_ax.axis('off')
 
         # Show updated plots
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
+
+    def determine_lims(self, frame_state, frame_start, frame_end):
+        # Combine data to ensure axis limits include all points
+        x_data = np.concatenate([self.poses[frame_start:frame_end, 3], frame_state.landmarks_world[0, :]])
+        y_data = np.concatenate([self.poses[frame_start:frame_end, 11], frame_state.landmarks_world[2, :]])
+
+        # Determine the initial axis limits
+        x_min, x_max = x_data.min(), x_data.max()
+        y_min, y_max = y_data.min(), y_data.max()
+
+        # Compute the spans of each axis
+        x_span = (x_max - x_min) * 1.1
+        y_span = (y_max - y_min) * 1.1
+
+        # Determine the larger span and adjust limits symmetrically
+        if x_span > y_span:
+            y_center = (y_min + y_max) / 2
+            y_min = y_center - x_span / 2
+            y_max = y_center + x_span / 2
+        else:
+            x_center = (x_min + x_max) / 2
+            x_min = x_center - y_span / 2
+            x_max = x_center + y_span / 2
+
+        return x_min, x_max, y_min, y_max
 
     def close(self):
         """Close the visualization."""
