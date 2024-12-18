@@ -30,39 +30,38 @@ class Initialization:
     def get_features_and_k(self, imgs, K, params):
         # Step 1: Detect keypoints in the first image using Shi-Tomasi corner detector
         corners = cv2.goodFeaturesToTrack(imgs[0], maxCorners=params["maxCorners"], qualityLevel=params["qualityLevel"], minDistance=params["minDistance"])
-        corners_first = np.float32(corners).reshape(-1, 1, 2)
-        corners_current = corners_first
+        good_old = np.float32(corners).reshape(-1, 1, 2)
+        good_new = good_old
 
-        # Step 2: Track keypoints from first to last image using optical flow
+        # Step 2: Track keypoints, remove far-away features + outliers, estimate essential matrix
         for i in range(len(imgs)-1):
+            # Step 2.1: Track keypoints from first to last image using optical flow
             # Note: maxLevel=0 reduces quality but makes sure that no pyramids are used (not implemented in exercise)
             lk_params = dict(winSize=params["winSize"], maxLevel=0, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01))
-            tracked_points, status, _ = cv2.calcOpticalFlowPyrLK(imgs[i], imgs[i+1], corners_current, None, **lk_params)
+            tracked_points, status, _ = cv2.calcOpticalFlowPyrLK(imgs[i], imgs[i+1], good_new, None, **lk_params)
 
             # Keep only good points
-            corners_first = corners_first[status.flatten() == 1]
-            corners_current = tracked_points[status.flatten() == 1]
-        
-        good_old = corners_first
-        good_new = corners_current
+            good_old = good_old[status.flatten() == 1]
+            good_new = tracked_points[status.flatten() == 1]
 
-        # Step 3: filter points that didn't move more pixels than a certain threshold (e.g. close to epipole)
-        distances = np.sqrt(np.sum((good_new - good_old)**2, axis=2)).flatten()
-        drop = np.where(distances < params["dist_threshold_move"])
-        good_old = np.delete(good_old, drop, axis=0)
-        good_new = np.delete(good_new, drop, axis=0)
+            # Step 2.2: filter points that didn't move more pixels than a certain threshold (e.g. close to epipole)
+            # distances = np.linalg.norm(good_new - good_old, axis=2)
+            distances = np.sqrt(np.sum((good_new - good_old)**2, axis=2)).flatten()
+            drop = np.where(distances < params["dist_threshold_move"])
+            good_old = np.delete(good_old, drop, axis=0)
+            good_new = np.delete(good_new, drop, axis=0)
 
-        # Step 4: Estimate the Essential Matrix using RANSAC
-        E, mask = cv2.findEssentialMat(good_new, good_old, cameraMatrix=K, method=cv2.RANSAC, prob=params["RANSAC_prob"], threshold=params["RANSAC_threshold"])
-        good_old = good_old[mask.flatten() == 1]
-        good_new = good_new[mask.flatten() == 1]
+            # Step 2.3: Estimate the Essential Matrix using RANSAC
+            E, mask = cv2.findEssentialMat(good_new, good_old, cameraMatrix=K, method=cv2.RANSAC, prob=params["RANSAC_prob"], threshold=params["RANSAC_threshold"])
+            good_old = good_old[mask.flatten() == 1]
+            good_new = good_new[mask.flatten() == 1]
 
         # Recover pose from Essential Matrix
         _, R, t, _ = cv2.recoverPose(E, good_old, good_new, K)
         print("projection matrix from last position to first position")
         print(np.hstack((R, t)))
 
-        # Step 5: Triangulate 3D points
+        # Step 3: Triangulate 3D points
         # Create projection matrices for the first and second views
         proj1 = K @ np.hstack((np.eye(3), np.zeros((3, 1))))  # Projection matrix for the first view
         proj2 = K @ np.hstack((R, t))  # Projection matrix for the second view
@@ -72,7 +71,7 @@ class Initialization:
         points4D_hom = cv2.triangulatePoints(proj1, proj2, good_old, good_new)
         points3D = points4D_hom[:3] / points4D_hom[3]  # Convert from homogeneous to 3D
 
-        # Step 6: Use reprojection error to remove bad points
+        # Step 4: Use reprojection error to remove bad points
         points3D_hom = np.vstack((points3D, np.ones(points3D.shape[1])))  # Back to homogeneous coordinates
         reprojected1 = proj1 @ points3D_hom
         reprojected2 = proj2 @ points3D_hom
@@ -157,20 +156,23 @@ class Initialization:
         malaga_base_bath = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
         imgs = {
             "kitti": [f'data/kitti/05/image_0/{str(i).zfill(6)}.png' for i in range(3)],
-            #"parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
-            #"malaga": [malaga_base_bath + file for file in os.listdir(malaga_base_bath) if "left" in file][:2]
+            "parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
+            "malaga": [malaga_base_bath + file for file in os.listdir(malaga_base_bath) if "left" in file][:5]
         }
         
         params = {
-            "kitti":   {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":5, "winSize":(11, 11), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":3.0},
+            "kitti":   {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":2, "winSize":(11, 11), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":3.0},
             "parking": {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(11, 11), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":1.0},
-            "malaga":  {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":5, "winSize":(31, 31), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":5.0}
+            "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":3.0}
+            # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":5.0} # on 5 frames
+            # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":3.0} # on 5 frames
         }
         return K[dataset], params[dataset], imgs[dataset]
 
     
 if __name__ == "__main__":
-    data_choice = "kitti"
+    data_choice = "malaga"
     initialization = Initialization(data_choice, True)
     points3D, points2D = initialization.get_initial_landmarks()
+    # initialization.save_landmarks("landmarks/malaga.txt")
     print(f"Got points with sizes {points3D.shape} and {points2D.shape}")
