@@ -1,7 +1,8 @@
 import numpy as np
 
 class Constants:
-    THRESHOLD_NEW_KEYPOINTS = 5 # given in pixels 
+    THRESHOLD_NEW_KEYPOINTS = 20 # given in pixels 
+    THRESHOLD_PIXEL_DIST_TRIANGULATION = 10 # given in pixels
 
 def get_k_params_imgs(dataset):
     assert dataset in ["kitti","parking","malaga"], f'dataset should be in "kitti","parking","malaga", got: {dataset}'

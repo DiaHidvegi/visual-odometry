@@ -61,16 +61,15 @@ class ContinuousVO:
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-        #pose, inlier_mask = self.ransacLocalization(Pi, Xi.T)
-        pose, inlier_mask = self.estimate_pose(Pi, Xi.T)
-
-        pose = pose[:3,:].reshape((1,-1))
+        pose, inlier_mask = self.estimate_pose(Pi, Xi)
 
         inliers_idx = np.where(inlier_mask == 1)[0]
         Pi = Pi[:, inliers_idx]
         Xi = Xi[:, inliers_idx]
 
-        Ci, Fi , Ti = self.handle_candidates(img_current, img_prev, state_prev, Pi)
+        Ci, Fi , Ti = self.handle_candidates(img_current, img_prev, state_prev, Pi, pose)
+
+        pose = pose[:3,:].reshape((1,-1))
 
         new_state = FrameState(
             landmarks_image=Pi,
@@ -129,6 +128,7 @@ class ContinuousVO:
         """
         #points2D = np.flip(points2D, axis=0)
         points2D = points2D.T
+        points3D = points3D.T
         
         success, rvec, tvec, inliers = cv2.solvePnPRansac(
             points3D, points2D, self.K, None
@@ -148,28 +148,28 @@ class ContinuousVO:
         return pose, inlier_mask
     
 
-    def handle_candidates(self, img_current, img_prev, state_prev, Pi):
+    def handle_candidates(self, img_current, img_prev, state_prev, Pi, pose):
 
         Ci = state_prev.cand_landmarks_image_current
         Fi = state_prev.cand_landmarks_image_first
         Ti = state_prev.cand_landmarks_transform
 
         # Detect new features in the current frame
+        # TODO: Use self.params instead of hardcoding the parameters
         features_current = cv2.goodFeaturesToTrack(img_current, maxCorners=1000, qualityLevel=0.01, minDistance=10)
         features_current = np.float32(features_current).reshape(-1, 2) 
 
         # Track features from the previous frame
         tracked_features, status, _ = self.track_keypoints(Ci, img_prev, img_current)
         valid_idx = np.where(status == 1)[0]
-        tracked_features = tracked_features[:, valid_idx]
 
         # Update Ci, Fi, Ti with tracked features
-        Ci = tracked_features
+        Ci = tracked_features[:, valid_idx]
         Fi = Fi[:, valid_idx]
         Ti = Ti[:, valid_idx]
 
         # Combine existing points (tracked_features and Pi)
-        existing_features = np.vstack([tracked_features.T, Pi.T])
+        existing_features = np.vstack([Ci.T, Pi.T])
 
         # Compute pairwise distances and filter out duplicates
         distance_matrix = cdist(features_current, existing_features)
@@ -177,12 +177,38 @@ class ContinuousVO:
         new_feature_mask = min_distances > Constants.THRESHOLD_NEW_KEYPOINTS
 
         # Filter out new features
-        new_features = features_current[new_feature_mask].T  
+        new_features = features_current[new_feature_mask].T
+
+        # TODO: When to triangluate new points?
+        # Calcuate distance between Ci and Fi
+        distance_matrix = np.linalg.norm(Ci.T - Fi.T)
+
+        mask = distance_matrix > Constants.THRESHOLD_PIXEL_DIST_TRIANGULATION
+
+        Xi = np.ndarray((3,0))
+        for idx in mask:
+            if idx==0:
+                continue
+            # Triangulate new points
+            # Create projection matrices for the first and second views
+            Ti_idx_formatted = np.reshape(Ti[:, idx], (3, 4))
+            proj1 = self.K @ Ti_idx_formatted
+            proj2 = self.K @ np.hstack((pose[:3, :3], pose[:3, 3].reshape(-1, 1)))
+
+            points4D_hom = cv2.triangulatePoints(proj1, proj2, Fi[:, idx], Ci[:, idx])
+            points3D = points4D_hom[:3] / points4D_hom[3]
+
+            # Add new landmark to Xi
+            Xi = np.hstack([Xi, points3D])
+
+            # TODO: Continue
+            
 
         # Add new features to Ci, Fi, Ti
         if new_features.size > 0:  
             Ci = np.hstack([Ci, new_features])  
             Fi = np.hstack([Fi, new_features])  
-            Ti = np.hstack([Ti, np.ones((Ti.shape[0], new_features.shape[1]))]) 
+            Ti = np.hstack([Ti, pose])
+        
 
         return Ci, Fi, Ti
