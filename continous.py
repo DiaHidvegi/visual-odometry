@@ -174,7 +174,7 @@ class ContinuousVO:
         # Compute pairwise distances and filter out duplicates
         distance_matrix = cdist(features_current, existing_features)
         min_distances = np.min(distance_matrix, axis=1) 
-        new_feature_mask = min_distances > 10  
+        new_feature_mask = min_distances > Constants.THRESHOLD_NEW_KEYPOINTS
 
         # Filter out new features
         new_features = features_current[new_feature_mask].T  
@@ -186,87 +186,3 @@ class ContinuousVO:
             Ti = np.hstack([Ti, np.ones((Ti.shape[0], new_features.shape[1]))]) 
 
         return Ci, Fi, Ti
-
-    def ransacLocalization(self, matched_query_keypoints, corresponding_landmarks):
-        """
-        Perform RANSAC-based localization using P3P to estimate pose.
-
-        Args:
-            matched_query_keypoints (np.ndarray): 2xN array of 2D keypoints in the image.
-            corresponding_landmarks (np.ndarray): Nx3 array of 3D landmarks.
-            K (np.ndarray): 3x3 camera intrinsic matrix.
-
-        Returns:
-            R_C_W (np.ndarray): 3x3 rotation matrix.
-            t_C_W (np.ndarray): 3x1 translation vector.
-            best_inlier_mask (np.ndarray): Boolean array of inliers.
-        """
-    
-        num_iterations = 1000
-        pixel_tolerance = 10
-        k = 3  # Number of points required for P3P
-
-        # Initialize variables
-        best_inlier_mask = np.zeros(matched_query_keypoints.shape[1], dtype=bool)
-        max_num_inliers = 0
-
-        # Flip keypoints to (u, v) format
-        #matched_query_keypoints = np.flip(matched_query_keypoints, axis=0)
-
-        for _ in range(num_iterations):
-            # Randomly sample k points
-            indices = np.random.permutation(corresponding_landmarks.shape[0])[:k]
-            landmark_sample = corresponding_landmarks[indices, :]
-            keypoint_sample = matched_query_keypoints[:, indices]
-
-            # Solve P3P
-            success, rotation_vectors, translation_vectors = cv2.solveP3P(
-                landmark_sample, keypoint_sample.T, self.K, None, flags=cv2.SOLVEPNP_P3P
-            )
-
-            if not success:
-                continue
-
-            # Evaluate all P3P solutions
-            for rvec, tvec in zip(rotation_vectors, translation_vectors):
-                R_C_W_guess = cv2.Rodrigues(rvec)[0]
-                t_C_W_guess = tvec
-
-                # Project landmarks into the image
-                C_landmarks = (
-                    np.matmul(R_C_W_guess, corresponding_landmarks.T).T + t_C_W_guess.T
-                )
-                #projected_points = self.projectPoints(C_landmarks)
-                #projected_points, _ = cv2.projectPoints(C_landmarks, np.zeros(3), np.zeros(3), self.K, None)
-                projected_points, _ = cv2.projectPoints(corresponding_landmarks.T, rvec, tvec, self.K, None)
-                projected_points = projected_points.squeeze()
-
-                # Calculate reprojection errors
-                difference = matched_query_keypoints.T - projected_points
-                errors = np.linalg.norm(difference, axis=1)
-                is_inlier = errors < pixel_tolerance
-
-                # Update the best solution if this one is better
-                num_inliers = np.sum(is_inlier)
-                if num_inliers > max_num_inliers:
-                    max_num_inliers = num_inliers
-                    best_inlier_mask = is_inlier
-                    best_R_C_W = R_C_W_guess
-                    best_t_C_W = t_C_W_guess
-
-        pose = np.eye(4)
-        pose[:3, :3] = best_R_C_W.T
-        pose[:3, 3] = ((-best_R_C_W.T)@best_t_C_W).flatten()
-
-        return pose, best_inlier_mask
-    
-    def projectPoints(self, points_3d):
-        """
-        Projects 3d points to the image plane (3xN), given the camera matrix (3x3) and
-        distortion coefficients (4x1).
-        """
-        # get image coordinates
-        projected_points = np.matmul(self.K, points_3d[:, :, None]).squeeze(-1)
-        projected_points /= projected_points[:, 2, None]
-
-        return projected_points[:,:2]
