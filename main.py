@@ -40,7 +40,7 @@ def main():
         )
 
     visualizer = Visualizer()
-    vo = ContinuousVO(K=K)
+    vo = ContinuousVO(K=K, datachoice=data_choice)
 
     frame_state = state0
 
