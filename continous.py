@@ -3,6 +3,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from typing import Tuple
 from framestate import FrameState
+from scipy.spatial.distance import cdist
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -67,33 +68,50 @@ class ContinuousVO:
         Pi = Pi[:, inliers_idx]
         Xi = Xi[:, inliers_idx]
 
+        Ci, Fi , Ti = self.handle_candidates(img_current, img_prev, state_prev, Pi)
+
         new_state = FrameState(
             landmarks_image=Pi,
             landmarks_world=Xi,
-            cand_landmarks_image_current=state_prev.cand_landmarks_image_current,
-            cand_landmarks_image_first=state_prev.cand_landmarks_image_first,
-            cand_landmarks_transform=state_prev.cand_landmarks_transform
+            cand_landmarks_image_current=Ci,
+            cand_landmarks_image_first=Fi,
+            cand_landmarks_transform=Ti
         )
 
-        return new_state, pose
+        return new_state, pose  
 
-    def track_keypoints(self, points: np.ndarray, img_prev: np.ndarray, img_current: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def track_keypoints(self, prev_keypoints: np.ndarray, img_prev: np.ndarray, img_current: np.ndarray):
         """
-        Tracks keypoints from the previous frame to the current frame using KLT.
+        Track keypoints between two frames using Lucas-Kanade optical flow.
 
         Args:
-            points (np.ndarray): Keypoints in the previous frame (shape 2xK).
+            prev_keypoints (np.ndarray): Previous keypoints to track (2xN array of [x, y] coordinates).
             img_prev (np.ndarray): Previous frame (grayscale image).
             img_current (np.ndarray): Current frame (grayscale image).
 
         Returns:
             Tuple[np.ndarray, np.ndarray, np.ndarray]:
-                Tracked keypoints (2xK), status array, and error array.
+                - Tracked points in the current frame (2xN array).
+                - Status array indicating tracking success (1 if successful, 0 otherwise).
+                - Error array for each tracked point.
         """
-        points = points.T.astype(np.float32)
+        if prev_keypoints.size == 0:
+            # No keypoints to track
+            return np.empty((2, 0)), np.empty((0,), dtype=np.uint8), np.empty((0,), dtype=np.float32)
+
+        # Convert keypoints to the correct shape for OpenCV (Nx1x2)
+        prev_keypoints_cv = prev_keypoints.T.reshape(-1, 1, 2).astype(np.float32)
+
         lk_params = dict(winSize=(11, 11), maxLevel=0, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01))
-        points_tracked, status, error = cv2.calcOpticalFlowPyrLK(img_prev, img_current, points, None, **lk_params)
-        return points_tracked.T, status.ravel(), error.ravel()
+        tracked_points, status, error = cv2.calcOpticalFlowPyrLK(img_prev, img_current, prev_keypoints_cv, None, **lk_params)
+
+        # Reshape tracked points back to 2xN
+        tracked_points = tracked_points.reshape(-1, 2).T
+        status = status.flatten()
+        error = error.flatten()
+
+        return tracked_points, status, error
+
 
     def estimate_pose(self, points2D: np.ndarray, points3D: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -120,13 +138,53 @@ class ContinuousVO:
         R_mat = cv2.Rodrigues(rvec)[0]
         pose = np.eye(4)
         pose[:3, :3] = R_mat.T
-        pose[:3, 3] = ((-R_mat)@tvec).flatten()
+        pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
 
         inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
         inlier_mask[inliers.flatten()] = 1
 
         return pose, inlier_mask
     
+
+    def handle_candidates(self, img_current, img_prev, state_prev, Pi):
+
+        Ci = state_prev.cand_landmarks_image_current
+        Fi = state_prev.cand_landmarks_image_first
+        Ti = state_prev.cand_landmarks_transform
+
+        # Detect new features in the current frame
+        features_current = cv2.goodFeaturesToTrack(img_current, maxCorners=1000, qualityLevel=0.01, minDistance=10)
+        features_current = np.float32(features_current).reshape(-1, 2) 
+
+        # Track features from the previous frame
+        tracked_features, status, _ = self.track_keypoints(Ci, img_prev, img_current)
+        valid_idx = np.where(status == 1)[0]
+        tracked_features = tracked_features[:, valid_idx]
+
+        # Update Ci, Fi, Ti with tracked features
+        Ci = tracked_features
+        Fi = Fi[:, valid_idx]
+        Ti = Ti[:, valid_idx]
+
+        # Combine existing points (tracked_features and Pi)
+        existing_features = np.vstack([tracked_features.T, Pi.T])
+
+        # Compute pairwise distances and filter out duplicates
+        distance_matrix = cdist(features_current, existing_features)
+        min_distances = np.min(distance_matrix, axis=1) 
+        new_feature_mask = min_distances > 10  
+
+        # Filter out new features
+        new_features = features_current[new_feature_mask].T  
+
+        # Add new features to Ci, Fi, Ti
+        if new_features.size > 0:  
+            Ci = np.hstack([Ci, new_features])  
+            Fi = np.hstack([Fi, new_features])  
+            Ti = np.hstack([Ti, np.ones((Ti.shape[0], new_features.shape[1]))]) 
+
+        return Ci, Fi, Ti
+
     def ransacLocalization(self, matched_query_keypoints, corresponding_landmarks):
         """
         Perform RANSAC-based localization using P3P to estimate pose.

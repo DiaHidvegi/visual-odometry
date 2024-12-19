@@ -157,7 +157,7 @@ class Initialization:
         malaga_base_bath = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
         imgs = {
             "kitti": [f'data/kitti/05/image_0/{str(i).zfill(6)}.png' for i in range(3)],
-            #"parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
+            "parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
             #"malaga": [malaga_base_bath + file for file in os.listdir(malaga_base_bath) if "left" in file][:2]
         }
         
