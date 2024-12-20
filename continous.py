@@ -149,22 +149,22 @@ class ContinuousVO:
 
         return pose, inlier_mask
 
-    def compute_baseline_angle(self, first_keypoint, current_keypoint, first_pose, current_pose):
+    def compute_baseline_angle(self, prev_keypoint, current_keypoint, prev_pose, current_pose):
         """
         Compute the baseline angle between two keypoints and their associated poses.
             Args:
-                first_keypoint: Keypoint in the first frame.
+                prev_keypoint: Keypoint in the prev frame.
                 current_keypoint: Keypoint in the current frame.
-                first_pose: Pose of the camera at the first frame.
+                prev_pose: Pose of the camera at the previous frame.
                 current_pose: Pose of the camera at the current frame.
         """
-        first_bearing = np.linalg.inv(self.K) @ np.append(first_keypoint, 1)
+        prev_bearing = np.linalg.inv(self.K) @ np.append(prev_keypoint, 1)
         current_bearing = np.linalg.inv(self.K) @ np.append(current_keypoint, 1)
 
-        first_bearing_world = first_pose[:3, :3] @ first_bearing
+        prev_bearing_world = prev_pose[:3, :3] @ prev_bearing
         current_bearing_world = current_pose[:3, :3] @ current_bearing
-        cosine_angle = np.dot(first_bearing_world, current_bearing_world) / (
-            np.linalg.norm(first_bearing_world) * np.linalg.norm(current_bearing_world)
+        cosine_angle = np.dot(prev_bearing_world, current_bearing_world) / (
+            np.linalg.norm(prev_bearing_world) * np.linalg.norm(current_bearing_world)
         )
         return np.arccos(np.clip(cosine_angle, -1, 1))
 
