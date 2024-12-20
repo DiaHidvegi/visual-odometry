@@ -6,6 +6,8 @@ from visualizer import Visualizer
 from framestate import FrameState
 from continous import ContinuousVO
 
+from time import sleep
+
 def main():
     # for KITTI
     img1 = 'data/kitti/05/image_0/000000.png'
@@ -45,21 +47,27 @@ def main():
     frame_state = state0
 
     for i in range(1, 1000):
-        #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
-        #kitti
-        image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
-        image_path_current = f"data/{data_choice}/05/image_0/{str(i).zfill(6)}.png"
-        #parking
-        #image_path_prev = f"data/{data_choice}/images/img_{str(i-1).zfill(5)}.png"
-        #image_path_current = f"data/{data_choice}/images/img_{str(i).zfill(5)}.png"
+        try:
+            #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
+            #kitti
+            image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
+            image_path_current = f"data/{data_choice}/05/image_0/{str(i).zfill(6)}.png"
+            #parking
+            #image_path_prev = f"data/{data_choice}/images/img_{str(i-1).zfill(5)}.png"
+            #image_path_current = f"data/{data_choice}/images/img_{str(i).zfill(5)}.png"
 
+            img_prev = cv2.imread(image_path_prev, cv2.IMREAD_GRAYSCALE)
+            img_current = cv2.imread(image_path_current, cv2.IMREAD_GRAYSCALE)
 
-        img_prev = cv2.imread(image_path_prev, cv2.IMREAD_GRAYSCALE)
-        img_current = cv2.imread(image_path_current, cv2.IMREAD_GRAYSCALE)
+            frame_state, pose = vo.process_frame(img_current, img_prev, frame_state)
+            
+            visualizer.update(frame_state, pose, img_current)
 
-        frame_state, pose = vo.process_frame(img_current, img_prev, frame_state)
-        
-        visualizer.update(frame_state, pose, img_current)
+            sleep(0.05)
+
+        except Exception as e:
+            print(f"---- Error at frame {i}: {e} ----")
+            break
     
     visualizer.close()
 

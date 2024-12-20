@@ -295,11 +295,6 @@ class ContinuousVO:
                 # Calculate the baseline angle
                 # alpha = self.compute_baseline_angle(Fi[:, idx], Ci[:, idx], Ti_idx_formatted, pose[:3, :])
 
-                if alpha > Constants.THRESHOLD_CANDIDATES_ALPHA:
-                    points3D = np.hstack([points3D, point3D])
-                else:
-                    new_landmarks[idx] = False
-
 
             Pi = np.hstack([Pi, Ci[:, new_landmarks]])
             Xi = np.hstack([Xi, points3D])
