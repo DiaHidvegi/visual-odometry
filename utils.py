@@ -1,7 +1,7 @@
 import numpy as np
 
 class Constants:
-    THRESHOLD_NEW_KEYPOINTS = 10 # given in pixels 
+    THRESHOLD_NEW_KEYPOINTS = 5 # given in pixels 
     THRESHOLD_PIXEL_DIST_TRIANGULATION = 10 # given in pixels
     THRESHOLD_PIXEL_DIST_CANDIDATES_MIN = 2 # given in pixels
     THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = 50 # given in pixels

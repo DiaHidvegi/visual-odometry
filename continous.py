@@ -259,7 +259,7 @@ class ContinuousVO:
                 t_idx = Ti_idx_formatted[:3,3]
 
                 # Check for negative depth
-                if point3D[2] < t_idx[2]:
+                if point3D[2] < -t_idx[2]:
                     new_landmarks[idx] = False
                     continue
 

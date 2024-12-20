@@ -7,25 +7,6 @@ from framestate import FrameState
 from continous import ContinuousVO
 
 def main():
-    # for KITTI
-    img1 = 'data/kitti/05/image_0/000000.png'
-    img2 = 'data/kitti/05/image_0/000002.png'
-    K = np.array([[707.09,  0, 601.88],
-                  [ 0, 707.09, 183.11],
-                  [ 0,  0,  1]])
-    
-    init = Initialization('kitti', show_plots=False)
-    state0 = FrameState(
-        landmarks_image=init.points2D, 
-        landmarks_world=init.points3D, 
-        cand_landmarks_image_current=np.empty((2, 0)),
-        cand_landmarks_image_first=np.empty((2, 0)),
-        cand_landmarks_transform=np.empty((12, 0))
-        )
-    
-    print(state0)
-
-    ## Continous with prior initialization
 
     data_choice = "kitti"
     initialization = Initialization(data_choice, False)
