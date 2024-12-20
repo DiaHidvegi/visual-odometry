@@ -149,24 +149,13 @@ class ContinuousVO:
 
         return pose, inlier_mask
 
-    def compute_baseline_angle(self, prev_keypoint, current_keypoint, prev_pose, current_pose):
-        """
-        Compute the baseline angle between two keypoints and their associated poses.
-            Args:
-                prev_keypoint: Keypoint in the prev frame.
-                current_keypoint: Keypoint in the current frame.
-                prev_pose: Pose of the camera at the previous frame.
-                current_pose: Pose of the camera at the current frame.
-        """
-        prev_bearing = np.linalg.inv(self.K) @ np.append(prev_keypoint, 1)
-        current_bearing = np.linalg.inv(self.K) @ np.append(current_keypoint, 1)
+    def compute_baseline_angle(self, point3D, t_cur, t_idx):
+        baseline = np.linalg.norm(t_cur - t_idx)
+        v1 = np.linalg.norm(point3D - t_idx)
+        v2 = np.linalg.norm(point3D - t_cur)
 
-        prev_bearing_world = prev_pose[:3, :3] @ prev_bearing
-        current_bearing_world = current_pose[:3, :3] @ current_bearing
-        cosine_angle = np.dot(prev_bearing_world, current_bearing_world) / (
-            np.linalg.norm(prev_bearing_world) * np.linalg.norm(current_bearing_world)
-        )
-        return np.arccos(np.clip(cosine_angle, -1, 1))
+        alpha = np.arccos((v1**2 + v2**2 - baseline**2)/(2*v1*v2)) * 180/np.pi
+        return alpha
 
     def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray, pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -281,19 +270,13 @@ class ContinuousVO:
                     new_landmarks[idx] = False
                     continue
 
-                baseline = np.linalg.norm(t_cur - t_idx)
-                v1 = np.linalg.norm(point3D - t_idx)
-                v2 = np.linalg.norm(point3D - t_cur)
-
-                alpha = np.arccos((v1**2 + v2**2 - baseline**2)/(2*v1*v2)) * 180/np.pi
+                # Calculate the baseline angle
+                alpha = self.compute_baseline_angle(point3D, t_cur, t_idx)
 
                 if alpha > Constants.THRESHOLD_CANDIDATES_ALPHA:
                     points3D = np.hstack([points3D, point3D])
                 else:
                     new_landmarks[idx] = False
-
-                # Calculate the baseline angle
-                # alpha = self.compute_baseline_angle(Fi[:, idx], Ci[:, idx], Ti_idx_formatted, pose[:3, :])
 
 
             Pi = np.hstack([Pi, Ci[:, new_landmarks]])
