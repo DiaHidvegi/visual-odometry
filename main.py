@@ -8,6 +8,7 @@ from continous import ContinuousVO
 
 def main():
 
+    #data_choice = "parking"
     data_choice = "kitti"
     initialization = Initialization(data_choice, False)
     points3D, points2D = initialization.get_initial_landmarks()
@@ -26,13 +27,12 @@ def main():
     frame_state = state0
 
     for i in range(1, 1000):
-        #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
-        #kitti
-        image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
-        image_path_current = f"data/{data_choice}/05/image_0/{str(i).zfill(6)}.png"
-        #parking
-        #image_path_prev = f"data/{data_choice}/images/img_{str(i-1).zfill(5)}.png"
-        #image_path_current = f"data/{data_choice}/images/img_{str(i).zfill(5)}.png"
+        if data_choice == "kitti":
+            image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
+            image_path_current = f"data/{data_choice}/05/image_0/{str(i).zfill(6)}.png"
+        elif data_choice == "parking":
+            image_path_prev = f"data/{data_choice}/images/img_{str(i-1).zfill(5)}.png"
+            image_path_current = f"data/{data_choice}/images/img_{str(i).zfill(5)}.png"
 
 
         img_prev = cv2.imread(image_path_prev, cv2.IMREAD_GRAYSCALE)

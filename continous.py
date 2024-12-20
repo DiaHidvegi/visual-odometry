@@ -71,7 +71,7 @@ class ContinuousVO:
 
         #print(Ci.shape)
 
-        pose = pose[:3,:].reshape((1,-1))
+        pose = pose.reshape((1,-1))
 
         new_state = FrameState(
             landmarks_image=Pi,
@@ -147,7 +147,7 @@ class ContinuousVO:
         inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
         inlier_mask[inliers.flatten()] = 1
 
-        return pose, inlier_mask
+        return pose[:3,:4], inlier_mask
     
 
     def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray, pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -194,7 +194,7 @@ class ContinuousVO:
 
         # Filter points that didn't move more pixels than a certain threshold (e.g. close to epipole)
         distances = np.sqrt(np.sum((Ci - Fi) ** 2, axis=0))
-        good_candidates = (distances > Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MIN) & (distances < Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MAX)
+        good_candidates = (distances > Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MIN) #& (distances < Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MAX)
 
         Ci = Ci[:, good_candidates]
         Fi = Fi[:, good_candidates]
@@ -251,7 +251,7 @@ class ContinuousVO:
                 # Create projection matrices for the first and second views
                 Ti_idx_formatted = np.reshape(Ti[:, idx], (3, 4))
                 proj1 = self.K @ self.invert_transformation(Ti_idx_formatted)
-                proj2 = self.K @ self.invert_transformation(pose[:3,:])
+                proj2 = self.K @ self.invert_transformation(pose)
 
                 point4D_hom = cv2.triangulatePoints(proj1, proj2, Fi[:, idx], Ci[:, idx])
                 point3D = point4D_hom[:3] / point4D_hom[3]
@@ -285,7 +285,7 @@ class ContinuousVO:
 
         # Add new features to Ci, Fi, Ti
         if new_features.size > 0:  
-            pose = pose[:3,:].reshape((-1,1))
+            pose = pose.reshape((-1,1))
             tiled_pose = np.tile(pose, (1, new_features.shape[1]))
             Ci = np.hstack([Ci, new_features])  
             Fi = np.hstack([Fi, new_features])  
