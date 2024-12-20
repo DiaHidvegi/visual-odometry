@@ -67,6 +67,9 @@ class ContinuousVO:
         Pi = Pi[:, inliers_idx]
         Xi = Xi[:, inliers_idx]
 
+        # Triangulate new landmarks
+        state_prev = self.triangulate_new_landmarks(state_prev, img_current, pose)
+
         new_state = FrameState(
             landmarks_image=Pi,
             landmarks_world=Xi,
@@ -127,86 +130,72 @@ class ContinuousVO:
 
         return pose, inlier_mask
     
-    def ransacLocalization(self, matched_query_keypoints, corresponding_landmarks):
+    def triangulate_new_landmarks(self, state_prev: FrameState, img_current: np.ndarray, pose: np.ndarray) -> FrameState:
         """
-        Perform RANSAC-based localization using P3P to estimate pose.
+        Triangulates new landmarks using candidate keypoints.
 
         Args:
-            matched_query_keypoints (np.ndarray): 2xN array of 2D keypoints in the image.
-            corresponding_landmarks (np.ndarray): Nx3 array of 3D landmarks.
-            K (np.ndarray): 3x3 camera intrinsic matrix.
+            state_prev (FrameState): Previous frame state.
+            img_current (np.ndarray): Current frame (grayscale image).
+            pose (np.ndarray): Current camera pose (4x4 transformation matrix).
 
         Returns:
-            R_C_W (np.ndarray): 3x3 rotation matrix.
-            t_C_W (np.ndarray): 3x1 translation vector.
-            best_inlier_mask (np.ndarray): Boolean array of inliers.
+            FrameState: Updated frame state with new landmarks.
         """
-    
-        num_iterations = 1000
-        pixel_tolerance = 10
-        k = 3  # Number of points required for P3P
+        new_candidates = []
+        for i in range(state_prev.cand_landmarks_image_current.shape[1]):
+            c_first = state_prev.cand_landmarks_image_first[:, i]
+            c_current = state_prev.cand_landmarks_image_current[:, i]
 
-        # Initialize variables
-        best_inlier_mask = np.zeros(matched_query_keypoints.shape[1], dtype=bool)
-        max_num_inliers = 0
+            T_first = state_prev.cand_landmarks_transform[:, i].reshape(4, 4)
+            T_current = pose
 
-        # Flip keypoints to (u, v) format
-        #matched_query_keypoints = np.flip(matched_query_keypoints, axis=0)
+            angle = self.compute_baseline_angle(c_first, c_current, T_first, T_current)
 
-        for _ in range(num_iterations):
-            # Randomly sample k points
-            indices = np.random.permutation(corresponding_landmarks.shape[0])[:k]
-            landmark_sample = corresponding_landmarks[indices, :]
-            keypoint_sample = matched_query_keypoints[:, indices]
+            if angle > np.radians(1):
+                landmark_3D = self.triangulate(T_first, T_current, c_first, c_current)
+                state_prev.landmarks_world = np.hstack((state_prev.landmarks_world, landmark_3D))
+                state_prev.landmarks_image = np.hstack((state_prev.landmarks_image, c_current.reshape(2, 1)))
 
-            # Solve P3P
-            success, rotation_vectors, translation_vectors = cv2.solveP3P(
-                landmark_sample, keypoint_sample.T, self.K, None, flags=cv2.SOLVEPNP_P3P
-            )
+                new_candidates.append(i)
 
-            if not success:
-                continue
+        state_prev.cand_landmarks_image_current = np.delete(state_prev.cand_landmarks_image_current, new_candidates, axis=1)
+        state_prev.cand_landmarks_image_first = np.delete(state_prev.cand_landmarks_image_first, new_candidates, axis=1)
+        state_prev.cand_landmarks_transform = np.delete(state_prev.cand_landmarks_transform, new_candidates, axis=1)
 
-            # Evaluate all P3P solutions
-            for rvec, tvec in zip(rotation_vectors, translation_vectors):
-                R_C_W_guess = cv2.Rodrigues(rvec)[0]
-                t_C_W_guess = tvec
+        return state_prev
 
-                # Project landmarks into the image
-                C_landmarks = (
-                    np.matmul(R_C_W_guess, corresponding_landmarks.T).T + t_C_W_guess.T
-                )
-                #projected_points = self.projectPoints(C_landmarks)
-                #projected_points, _ = cv2.projectPoints(C_landmarks, np.zeros(3), np.zeros(3), self.K, None)
-                projected_points, _ = cv2.projectPoints(corresponding_landmarks.T, rvec, tvec, self.K, None)
-                projected_points = projected_points.squeeze()
-
-                # Calculate reprojection errors
-                difference = matched_query_keypoints.T - projected_points
-                errors = np.linalg.norm(difference, axis=1)
-                is_inlier = errors < pixel_tolerance
-
-                # Update the best solution if this one is better
-                num_inliers = np.sum(is_inlier)
-                if num_inliers > max_num_inliers:
-                    max_num_inliers = num_inliers
-                    best_inlier_mask = is_inlier
-                    best_R_C_W = R_C_W_guess
-                    best_t_C_W = t_C_W_guess
-
-        pose = np.eye(4)
-        pose[:3, :3] = best_R_C_W.T
-        pose[:3, 3] = ((-best_R_C_W.T)@best_t_C_W).flatten()
-
-        return pose, best_inlier_mask
-    
-    def projectPoints(self, points_3d):
+    def compute_baseline_angle(self, first_keypoint, current_keypoint, first_pose, current_pose):
         """
-        Projects 3d points to the image plane (3xN), given the camera matrix (3x3) and
-        distortion coefficients (4x1).
+        Compute the baseline angle between two keypoints and their associated poses.
+            Args:
+                first_keypoint: Keypoint in the first frame.
+                current_keypoint: Keypoint in the current frame.
+                first_pose: Pose of the camera at the first frame.
+                current_pose: Pose of the camera at the current frame.
         """
-        # get image coordinates
-        projected_points = np.matmul(self.K, points_3d[:, :, None]).squeeze(-1)
-        projected_points /= projected_points[:, 2, None]
+        first_bearing = np.linalg.inv(self.K) @ np.append(first_keypoint, 1)
+        current_bearing = np.linalg.inv(self.K) @ np.append(current_keypoint, 1)
 
-        return projected_points[:,:2]
+        first_bearing_world = first_pose[:3, :3] @ first_bearing
+        current_bearing_world = current_pose[:3, :3] @ current_bearing
+        cosine_angle = np.dot(first_bearing_world, current_bearing_world) / (
+            np.linalg.norm(first_bearing_world) * np.linalg.norm(current_bearing_world)
+        )
+        return np.arccos(np.clip(cosine_angle, -1, 1))
+
+    def triangulate(self, first_pose, current_pose, first_keypoint, current_keypoint):
+        """
+        Triangulate a 3D point from two keypoints and their associated poses.
+        
+            Args:
+                first_pose: Pose of the camera at the first frame.
+                current_pose: Pose of the camera at the current frame.
+                first_keypoint: Keypoint in the first frame.
+                current_keypoint: Keypoint in the current frame.
+        """
+        proj_matrix1 = self.K @ first_pose[:3, :]
+        proj_matrix2 = self.K @ current_pose[:3, :]
+        points_4d = cv2.triangulatePoints(proj_matrix1, proj_matrix2, first_keypoint, current_keypoint)
+
+        return (points_4d[:3] / points_4d[3]).reshape(3, 1)

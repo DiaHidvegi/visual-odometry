@@ -44,7 +44,7 @@ def main():
 
     frame_state = state0
 
-    for i in range(1, 10):
+    for i in range(1, 200):
         #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
         image_path_prev = f"data/kitti/05/image_0/{str(i-1).zfill(6)}.png"
         image_path_current = f"data/kitti/05/image_0/{str(i).zfill(6)}.png"
