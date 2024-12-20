@@ -212,7 +212,7 @@ class ContinuousVO:
         new_features = features_current[new_feature_mask].T
 
         #Verify landmarks, candidates and new_candidates in a plot
-        show_plots = True
+        show_plots = False
 
         if show_plots:
             img_now = img_current.copy()
