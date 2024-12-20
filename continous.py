@@ -129,41 +129,6 @@ class ContinuousVO:
         inlier_mask[inliers.flatten()] = 1
 
         return pose, inlier_mask
-    
-    def triangulate_new_landmarks(self, state_prev: FrameState, img_current: np.ndarray, pose: np.ndarray) -> FrameState:
-        """
-        Triangulates new landmarks using candidate keypoints.
-
-        Args:
-            state_prev (FrameState): Previous frame state.
-            img_current (np.ndarray): Current frame (grayscale image).
-            pose (np.ndarray): Current camera pose (4x4 transformation matrix).
-
-        Returns:
-            FrameState: Updated frame state with new landmarks.
-        """
-        new_candidates = []
-        for i in range(state_prev.cand_landmarks_image_current.shape[1]):
-            c_first = state_prev.cand_landmarks_image_first[:, i]
-            c_current = state_prev.cand_landmarks_image_current[:, i]
-
-            T_first = state_prev.cand_landmarks_transform[:, i].reshape(4, 4)
-            T_current = pose
-
-            angle = self.compute_baseline_angle(c_first, c_current, T_first, T_current)
-
-            if angle > np.radians(1):
-                landmark_3D = self.triangulate(T_first, T_current, c_first, c_current)
-                state_prev.landmarks_world = np.hstack((state_prev.landmarks_world, landmark_3D))
-                state_prev.landmarks_image = np.hstack((state_prev.landmarks_image, c_current.reshape(2, 1)))
-
-                new_candidates.append(i)
-
-        state_prev.cand_landmarks_image_current = np.delete(state_prev.cand_landmarks_image_current, new_candidates, axis=1)
-        state_prev.cand_landmarks_image_first = np.delete(state_prev.cand_landmarks_image_first, new_candidates, axis=1)
-        state_prev.cand_landmarks_transform = np.delete(state_prev.cand_landmarks_transform, new_candidates, axis=1)
-
-        return state_prev
 
     def compute_baseline_angle(self, first_keypoint, current_keypoint, first_pose, current_pose):
         """
@@ -184,18 +149,53 @@ class ContinuousVO:
         )
         return np.arccos(np.clip(cosine_angle, -1, 1))
 
-    def triangulate(self, first_pose, current_pose, first_keypoint, current_keypoint):
-        """
-        Triangulate a 3D point from two keypoints and their associated poses.
+    # def triangulate(self, first_pose, current_pose, first_keypoint, current_keypoint):
+    #     """
+    #     Triangulate a 3D point from two keypoints and their associated poses.
         
-            Args:
-                first_pose: Pose of the camera at the first frame.
-                current_pose: Pose of the camera at the current frame.
-                first_keypoint: Keypoint in the first frame.
-                current_keypoint: Keypoint in the current frame.
-        """
-        proj_matrix1 = self.K @ first_pose[:3, :]
-        proj_matrix2 = self.K @ current_pose[:3, :]
-        points_4d = cv2.triangulatePoints(proj_matrix1, proj_matrix2, first_keypoint, current_keypoint)
+    #         Args:
+    #             first_pose: Pose of the camera at the first frame.
+    #             current_pose: Pose of the camera at the current frame.
+    #             first_keypoint: Keypoint in the first frame.
+    #             current_keypoint: Keypoint in the current frame.
+    #     """
+    #     proj_matrix1 = self.K @ first_pose[:3, :]
+    #     proj_matrix2 = self.K @ current_pose[:3, :]
+    #     points_4d = cv2.triangulatePoints(proj_matrix1, proj_matrix2, first_keypoint, current_keypoint)
 
-        return (points_4d[:3] / points_4d[3]).reshape(3, 1)
+    #     return (points_4d[:3] / points_4d[3]).reshape(3, 1)
+
+    # def triangulate_new_landmarks(self, state_prev: FrameState, img_current: np.ndarray, pose: np.ndarray) -> FrameState:
+    #     """
+    #     Triangulates new landmarks using candidate keypoints.
+
+    #     Args:
+    #         state_prev (FrameState): Previous frame state.
+    #         img_current (np.ndarray): Current frame (grayscale image).
+    #         pose (np.ndarray): Current camera pose (4x4 transformation matrix).
+
+    #     Returns:
+    #         FrameState: Updated frame state with new landmarks.
+    #     """
+    #     new_candidates = []
+    #     for i in range(state_prev.cand_landmarks_image_current.shape[1]):
+    #         c_first = state_prev.cand_landmarks_image_first[:, i]
+    #         c_current = state_prev.cand_landmarks_image_current[:, i]
+
+    #         T_first = state_prev.cand_landmarks_transform[:, i].reshape(4, 4)
+    #         T_current = pose
+
+    #         angle = self.compute_baseline_angle(c_first, c_current, T_first, T_current)
+
+    #         if angle > np.radians(1):
+    #             landmark_3D = self.triangulate(T_first, T_current, c_first, c_current)
+    #             state_prev.landmarks_world = np.hstack((state_prev.landmarks_world, landmark_3D))
+    #             state_prev.landmarks_image = np.hstack((state_prev.landmarks_image, c_current.reshape(2, 1)))
+
+    #             new_candidates.append(i)
+
+    #     state_prev.cand_landmarks_image_current = np.delete(state_prev.cand_landmarks_image_current, new_candidates, axis=1)
+    #     state_prev.cand_landmarks_image_first = np.delete(state_prev.cand_landmarks_image_first, new_candidates, axis=1)
+    #     state_prev.cand_landmarks_transform = np.delete(state_prev.cand_landmarks_transform, new_candidates, axis=1)
+
+    #     return state_prev
