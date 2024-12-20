@@ -67,7 +67,7 @@ class ContinuousVO:
         Pi = Pi[:, inliers_idx]
         Xi = Xi[:, inliers_idx]
 
-        Ci, Fi , Ti = self.handle_candidates(img_current, img_prev, state_prev, Pi, pose)
+        Pi, Xi, Ci, Fi, Ti = self.handle_candidates(img_current, img_prev, state_prev, Pi, Xi, pose)
 
         pose = pose[:3,:].reshape((1,-1))
 
@@ -148,7 +148,7 @@ class ContinuousVO:
         return pose, inlier_mask
     
 
-    def handle_candidates(self, img_current, img_prev, state_prev, Pi, pose):
+    def handle_candidates(self, img_current, img_prev, state_prev, Pi, Xi, pose):
 
         Ci = state_prev.cand_landmarks_image_current
         Fi = state_prev.cand_landmarks_image_first
@@ -168,6 +168,14 @@ class ContinuousVO:
         Fi = Fi[:, valid_idx]
         Ti = Ti[:, valid_idx]
 
+        # Filter points that didn't move more pixels than a certain threshold (e.g. close to epipole)
+        distances = np.sqrt(np.sum((Ci - Fi) ** 2, axis=0))
+        good_candidates = (distances > Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MIN) & (distances < Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MAX)
+
+        Ci = Ci[:, good_candidates]
+        Fi = Fi[:, good_candidates]
+        Ti = Ti[:, good_candidates]
+
         # Combine existing points (tracked_features and Pi)
         existing_features = np.vstack([Ci.T, Pi.T])
 
@@ -179,36 +187,106 @@ class ContinuousVO:
         # Filter out new features
         new_features = features_current[new_feature_mask].T
 
+        #Verify landmarks, candidates and new_candidates in a plot
+        show_plots = False
+
+        if show_plots:
+            img_now = img_current.copy()
+            # Draw Ci (white)
+            for pt in range(Ci.shape[1]):
+                x, y = Ci[0, pt], Ci[1, pt]
+                cv2.circle(img_now, (int(x), int(y)), 3, 255, -1)  # White
+
+            # Draw Pi (grey)
+            for pt in range(Pi.shape[1]):
+                x, y = Pi[0, pt], Pi[1, pt]
+                cv2.circle(img_now, (int(x), int(y)), 3, 128, -1)  # Grey (128)
+
+            # Draw new_features (black)
+            for pt in range(new_features.shape[1]):
+                x, y = new_features[0, pt], new_features[1, pt]
+                cv2.circle(img_now, (int(x), int(y)), 3, 0, -1)  # Black
+
+            # Display the image with the updated features
+            cv2.imshow("Features in Greyscale (Ci=White, Pi=Grey, New=Black)", img_now)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
         # TODO: When to triangluate new points?
         # Calcuate distance between Ci and Fi
-        distance_matrix = np.linalg.norm(Ci.T - Fi.T)
 
-        mask = distance_matrix > Constants.THRESHOLD_PIXEL_DIST_TRIANGULATION
+        t_cur = pose[:3,3]
 
-        Xi = np.ndarray((3,0))
-        for idx in mask:
-            if idx==0:
-                continue
-            # Triangulate new points
-            # Create projection matrices for the first and second views
-            Ti_idx_formatted = np.reshape(Ti[:, idx], (3, 4))
-            proj1 = self.K @ Ti_idx_formatted
-            proj2 = self.K @ np.hstack((pose[:3, :3], pose[:3, 3].reshape(-1, 1)))
+        distance_matrix = np.sqrt(np.sum((Ci - Fi) ** 2, axis=0))
 
-            points4D_hom = cv2.triangulatePoints(proj1, proj2, Fi[:, idx], Ci[:, idx])
-            points3D = points4D_hom[:3] / points4D_hom[3]
+        new_landmarks = distance_matrix > Constants.THRESHOLD_PIXEL_DIST_TRIANGULATION
+        
+        if new_landmarks.sum() > 0:
+            points3D = np.empty((3, 0))
+            for idx in range(new_landmarks.shape[0]):
+                if not new_landmarks[idx]:
+                    continue
+                # Triangulate new points
+                # Create projection matrices for the first and second views
+                Ti_idx_formatted = np.reshape(Ti[:, idx], (3, 4))
+                proj1 = self.K @ self.invert_transformation(Ti_idx_formatted)
+                proj2 = self.K @ self.invert_transformation(pose[:3,:])
 
-            # Add new landmark to Xi
+                point4D_hom = cv2.triangulatePoints(proj1, proj2, Fi[:, idx], Ci[:, idx])
+                point3D = point4D_hom[:3] / point4D_hom[3]
+
+                # Check for negative depth
+                if point3D[2] < 0:
+                    new_landmarks[idx] = False
+                    continue
+
+                t_idx = Ti_idx_formatted[:3,3]
+
+                baseline = np.linalg.norm(t_cur - t_idx)
+                v1 = np.linalg.norm(point3D - t_idx)
+                v2 = np.linalg.norm(point3D - t_cur)
+
+                alpha = np.arccos((v1**2 + v2**2 - baseline**2)/(2*v1*v2)) * 180/np.pi
+
+                if alpha > Constants.THRESHOLD_CANDIDATES_ALPHA:
+                    points3D = np.hstack([points3D, point3D])
+                else:
+                    new_landmarks[idx] = False
+
+            Pi = np.hstack([Pi, Ci[:, new_landmarks]])
             Xi = np.hstack([Xi, points3D])
+            no_new_landmark = np.where(new_landmarks == 0)[0]
+            Ci = Ci[:, no_new_landmark]
+            Fi = Fi[:, no_new_landmark]
+            Ti = Ti[:, no_new_landmark]
 
-            # TODO: Continue
-            
+
 
         # Add new features to Ci, Fi, Ti
         if new_features.size > 0:  
+            pose = pose[:3,:].reshape((-1,1))
+            tiled_pose = np.tile(pose, (1, new_features.shape[1]))
             Ci = np.hstack([Ci, new_features])  
             Fi = np.hstack([Fi, new_features])  
-            Ti = np.hstack([Ti, pose])
+            Ti = np.hstack([Ti, tiled_pose])
         
 
-        return Ci, Fi, Ti
+        return Pi, Xi, Ci, Fi, Ti
+    
+    def invert_transformation(self, T_3x4):
+        # Convert to 4x4 matrix
+        T_4x4 = np.eye(4)
+        T_4x4[:3, :4] = T_3x4
+
+        # Invert the 4x4 matrix
+        R = T_4x4[:3, :3]
+        t = T_4x4[:3, 3]
+        R_inv = R.T
+        t_inv = -R_inv @ t
+
+        T_4x4_inv = np.eye(4)
+        T_4x4_inv[:3, :3] = R_inv
+        T_4x4_inv[:3, 3] = t_inv
+
+        # Return the inverted 3x4 matrix
+        return T_4x4_inv[:3, :4]

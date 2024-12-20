@@ -20,7 +20,7 @@ def main():
         landmarks_world=init.points3D, 
         cand_landmarks_image_current=np.empty((2, 0)),
         cand_landmarks_image_first=np.empty((2, 0)),
-        cand_landmarks_transform=np.empty((16, 0))
+        cand_landmarks_transform=np.empty((12, 0))
         )
     
     print(state0)
@@ -36,7 +36,7 @@ def main():
         landmarks_world=points3D, 
         cand_landmarks_image_current=np.empty((2, 0)),
         cand_landmarks_image_first=np.empty((2, 0)),
-        cand_landmarks_transform=np.empty((16, 0))
+        cand_landmarks_transform=np.empty((12, 0))
         )
 
     visualizer = Visualizer()
@@ -44,7 +44,7 @@ def main():
 
     frame_state = state0
 
-    for i in range(3, 20):
+    for i in range(3, 100):
         #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
         #kitti
         image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
