@@ -69,6 +69,8 @@ class ContinuousVO:
 
         Pi, Xi, Ci, Fi, Ti = self.handle_candidates(img_current, img_prev, state_prev, Pi, Xi, pose)
 
+        #print(Ci.shape)
+
         pose = pose[:3,:].reshape((1,-1))
 
         new_state = FrameState(
@@ -148,7 +150,29 @@ class ContinuousVO:
         return pose, inlier_mask
     
 
-    def handle_candidates(self, img_current, img_prev, state_prev, Pi, Xi, pose):
+    def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray, pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Processes feature candidates between frames, updates candidate landmarks, and triangulates new 3D points.
+
+        Args:
+        - img_current (np.ndarray): Current image frame (grayscale).
+        - img_prev (np.ndarray): Previous image frame (grayscale).
+        - state_prev (FrameState): State object containing previous landmarks and candidates.
+            - state_prev.cand_landmarks_image_current (np.ndarray): Current candidate landmarks in image coordinates.
+            - state_prev.cand_landmarks_image_first (np.ndarray): First observed candidate landmarks in image coordinates.
+            - state_prev.cand_landmarks_transform (np.ndarray): Transformations associated with candidate landmarks.
+        - Pi (np.ndarray): Existing tracked landmarks in current frame in image coordinates (shape: 2 x N).
+        - Xi (np.ndarray): Existing tracked landmarks in current frame in 3D world coordinates (shape: 3 x N).
+        - pose (np.ndarray): Current camera pose as a 3x4 transformation matrix.
+
+        Returns:
+        - Tuple [np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+            - Pi: Updated tracked landmarks in image coordinates for current frame.
+            - Xi: Updated tracked landmarks in 3D world coordinates for current frame.
+            - Ci: Remaining candidate landmarks in image coordinates.
+            - Fi: Corresponding first observed candidate landmarks in image coordinates.
+            - Ti: Transformations (TCW not TWC atm.) associated with candidate landmarks from first appearance.
+        """
 
         Ci = state_prev.cand_landmarks_image_current
         Fi = state_prev.cand_landmarks_image_first
@@ -188,7 +212,7 @@ class ContinuousVO:
         new_features = features_current[new_feature_mask].T
 
         #Verify landmarks, candidates and new_candidates in a plot
-        show_plots = False
+        show_plots = True
 
         if show_plots:
             img_now = img_current.copy()
@@ -212,9 +236,6 @@ class ContinuousVO:
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-        # TODO: When to triangluate new points?
-        # Calcuate distance between Ci and Fi
-
         t_cur = pose[:3,3]
 
         distance_matrix = np.sqrt(np.sum((Ci - Fi) ** 2, axis=0))
@@ -235,12 +256,12 @@ class ContinuousVO:
                 point4D_hom = cv2.triangulatePoints(proj1, proj2, Fi[:, idx], Ci[:, idx])
                 point3D = point4D_hom[:3] / point4D_hom[3]
 
+                t_idx = Ti_idx_formatted[:3,3]
+
                 # Check for negative depth
-                if point3D[2] < 0:
+                if point3D[2] < t_idx[2]:
                     new_landmarks[idx] = False
                     continue
-
-                t_idx = Ti_idx_formatted[:3,3]
 
                 baseline = np.linalg.norm(t_cur - t_idx)
                 v1 = np.linalg.norm(point3D - t_idx)
@@ -273,7 +294,16 @@ class ContinuousVO:
 
         return Pi, Xi, Ci, Fi, Ti
     
-    def invert_transformation(self, T_3x4):
+    def invert_transformation(self, T_3x4: np.ndarray) -> np.ndarray:
+        """
+        Inverts a 3x4 transformation matrix.
+
+        Args:
+        - T_3x4 (np.ndarray): Input 3x4 transformation matrix.
+
+        Returns:
+        - np.ndarray: Inverted 3x4 transformation matrix.
+        """
         # Convert to 4x4 matrix
         T_4x4 = np.eye(4)
         T_4x4[:3, :4] = T_3x4

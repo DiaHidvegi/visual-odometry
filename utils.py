@@ -1,7 +1,7 @@
 import numpy as np
 
 class Constants:
-    THRESHOLD_NEW_KEYPOINTS = 20 # given in pixels 
+    THRESHOLD_NEW_KEYPOINTS = 10 # given in pixels 
     THRESHOLD_PIXEL_DIST_TRIANGULATION = 10 # given in pixels
     THRESHOLD_PIXEL_DIST_CANDIDATES_MIN = 2 # given in pixels
     THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = 50 # given in pixels
@@ -18,7 +18,7 @@ def get_k_params_imgs(dataset):
     malaga_base_bath = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
     imgs = {
         "kitti": [f'data/kitti/05/image_0/{str(i).zfill(6)}.png' for i in range(3)],
-        #"parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
+        "parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
         #"malaga": [malaga_base_bath + file for file in os.listdir(malaga_base_bath) if "left" in file][:2]
     }
     

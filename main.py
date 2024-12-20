@@ -40,11 +40,11 @@ def main():
         )
 
     visualizer = Visualizer()
-    vo = ContinuousVO(K=K, datachoice=data_choice)
+    vo = ContinuousVO(K=initialization.K, datachoice=data_choice)
 
     frame_state = state0
 
-    for i in range(3, 100):
+    for i in range(1, 1000):
         #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
         #kitti
         image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
