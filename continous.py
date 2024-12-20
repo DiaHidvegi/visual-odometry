@@ -230,7 +230,7 @@ class ContinuousVO:
         new_features = features_current[new_feature_mask].T
 
         #Verify landmarks, candidates and new_candidates in a plot
-        show_plots = True
+        show_plots = False
 
         if show_plots:
             img_now = img_current.copy()
@@ -277,7 +277,7 @@ class ContinuousVO:
                 t_idx = Ti_idx_formatted[:3,3]
 
                 # Check for negative depth
-                if point3D[2] < t_idx[2]:
+                if point3D[2] < -t_idx[2]:
                     new_landmarks[idx] = False
                     continue
 
