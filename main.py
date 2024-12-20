@@ -20,7 +20,7 @@ def main():
         landmarks_world=init.points3D, 
         cand_landmarks_image_current=np.empty((2, 0)),
         cand_landmarks_image_first=np.empty((2, 0)),
-        cand_landmarks_transform=np.empty((16, 0))
+        cand_landmarks_transform=np.empty((12, 0))
         )
     
     print(state0)
@@ -36,20 +36,26 @@ def main():
         landmarks_world=points3D, 
         cand_landmarks_image_current=np.empty((2, 0)),
         cand_landmarks_image_first=np.empty((2, 0)),
-        cand_landmarks_transform=np.empty((16, 0))
+        cand_landmarks_transform=np.empty((12, 0))
         )
 
     visualizer = Visualizer()
-    vo = ContinuousVO(K=K)
+    vo = ContinuousVO(K=initialization.K, datachoice=data_choice)
 
     frame_state = state0
 
-    for i in range(1, 10):
+    for i in range(1, 1000):
         #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
-        image_path_prev = f"data/kitti/05/image_0/{str(i-1).zfill(6)}.png"
-        image_path_current = f"data/kitti/05/image_0/{str(i).zfill(6)}.png"
-        img_prev = cv2.imread(image_path_prev)
-        img_current = cv2.imread(image_path_current)
+        #kitti
+        image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
+        image_path_current = f"data/{data_choice}/05/image_0/{str(i).zfill(6)}.png"
+        #parking
+        #image_path_prev = f"data/{data_choice}/images/img_{str(i-1).zfill(5)}.png"
+        #image_path_current = f"data/{data_choice}/images/img_{str(i).zfill(5)}.png"
+
+
+        img_prev = cv2.imread(image_path_prev, cv2.IMREAD_GRAYSCALE)
+        img_current = cv2.imread(image_path_current, cv2.IMREAD_GRAYSCALE)
 
         frame_state, pose = vo.process_frame(img_current, img_prev, frame_state)
         
