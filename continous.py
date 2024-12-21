@@ -162,11 +162,11 @@ class ContinuousVO:
         # Adjust parameters based on turning
         if turning:
             confidence = 0.99
-            reproj_error = 3.0
+            reproj_error = 2.5
             print("Turn detected - using permissive parameters")
         else:
-            confidence = 0.995
-            reproj_error = 1.5
+            confidence = 0.99
+            reproj_error = 1.15
         
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
