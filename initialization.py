@@ -157,7 +157,7 @@ class Initialization:
         imgs = {
             "kitti": [f'data/kitti/05/image_0/{str(i).zfill(6)}.png' for i in range(3)],
             "parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
-            "malaga": [malaga_base_path + file for file in os.listdir(malaga_base_path) if "left" in file][:5]
+            "malaga": sorted([malaga_base_path + file for file in os.listdir(malaga_base_path) if "left" in file])[:5]
         }
         
         params = {

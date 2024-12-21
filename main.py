@@ -29,7 +29,7 @@ def main():
     for i in range(1, 1000):
         try:
             malaga_base_path = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
-            malaga_paths = [malaga_base_path + file for file in os.listdir(malaga_base_path) if "left" in file]
+            malaga_paths = sorted([malaga_base_path + file for file in os.listdir(malaga_base_path) if "left" in file])
             image_path_prev = malaga_paths[i-1]
             image_path_current = malaga_paths[i]
             
