@@ -68,21 +68,43 @@ class Visualizer:
         if not hasattr(self, 'global_trajectory_line'):
             self.global_trajectory_line, = self.global_trajectory_ax.plot([], [], 'b-', label="Trajectory")
             self.global_trajectory_ax.set_title("Global Trajectory")
+            self.global_trajectory_ax.grid(True)
         self.global_trajectory_line.set_data(self.poses[:, 3], self.poses[:, 11])
-        self.global_trajectory_ax.relim()
-        self.global_trajectory_ax.autoscale_view()
-        self.global_trajectory_ax.set_aspect('equal', adjustable='datalim')
+        
+        # Always show the complete trajectory with padding
+        x_data = self.poses[:, 3]
+        y_data = self.poses[:, 11]
+        x_range = max(x_data.max() - x_data.min(), 1e-6)  # Avoid division by zero
+        y_range = max(y_data.max() - y_data.min(), 1e-6)  # Avoid division by zero
+        
+        # Calculate center of trajectory
+        x_center = (x_data.max() + x_data.min()) / 2
+        y_center = (y_data.max() + y_data.min()) / 2
+        
+        # Set the limits to the larger of the two ranges to maintain aspect ratio
+        max_range = max(x_range, y_range) * 1.1  # 10% padding
+        self.global_trajectory_ax.set_xlim(x_center - max_range/2, x_center + max_range/2)
+        self.global_trajectory_ax.set_ylim(y_center - max_range/2, y_center + max_range/2)
+        self.global_trajectory_ax.set_aspect('equal')
 
-        # Update keypoints plots
+        # Update keypoints plots with improved visibility
         if not hasattr(self, 'landmarks_plot'):
             self.landmarks_plot, = self.keypoints_ax.plot([], [], '-', label="Landmarks", color='green')
             self.candidates_plot, = self.keypoints_ax.plot([], [], '-', label="Candidates", color='red')
             self.keypoints_ax.legend()
+            self.keypoints_ax.grid(True)
+            self.keypoints_ax.set_xlabel('Frame')
+            self.keypoints_ax.set_ylabel('Count')
+        
         self.landmarks_plot.set_data(range(frame_start + 1, frame_end), self.landmarks_data[frame_start:frame_end])
         self.candidates_plot.set_data(range(frame_start + 1, frame_end), self.candidates_data[frame_start:frame_end])
-        self.keypoints_ax.relim()
-        self.keypoints_ax.autoscale_view()
-        self.keypoints_ax.set_ylim(bottom=0, top=self.keypoints_ax.get_ylim()[1])
+        
+        # Improve keypoints axis visibility
+        all_counts = self.landmarks_data[frame_start:frame_end] + self.candidates_data[frame_start:frame_end]
+        if len(all_counts) > 0:
+            max_count = max(max(all_counts), 1)  # Ensure we don't get a zero max
+            self.keypoints_ax.set_ylim(0, max_count * 1.1)  # Add 10% padding
+        self.keypoints_ax.set_xlim(frame_start, frame_end)
 
         # Update the image display
         if not hasattr(self, 'image_display'):
@@ -93,7 +115,7 @@ class Visualizer:
         else:
             self.image_display.set_data(image)
             self.points_plot_lm.set_data(frame_state.landmarks_image[0,:], frame_state.landmarks_image[1,:])
-            #self.points_plot_cnd.set_data(frame_state.cand_landmarks_image_current[1,:], frame_state.cand_landmarks_image_current[1,:])
+            self.points_plot_cnd.set_data(frame_state.cand_landmarks_image_current[0,:], frame_state.cand_landmarks_image_current[1,:])
         self.image_ax.axis('off')
 
         # Show updated plots

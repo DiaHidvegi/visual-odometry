@@ -28,13 +28,13 @@ def main():
 
     for i in range(1, 1000):
         try:
-            #image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
+            # image_path = f"data/parking/images/img_{str(i).zfill(5)}.png"
             #kitti
             image_path_prev = f"data/{data_choice}/05/image_0/{str(i-1).zfill(6)}.png"
             image_path_current = f"data/{data_choice}/05/image_0/{str(i).zfill(6)}.png"
             #parking
-            #image_path_prev = f"data/{data_choice}/images/img_{str(i-1).zfill(5)}.png"
-            #image_path_current = f"data/{data_choice}/images/img_{str(i).zfill(5)}.png"
+            # image_path_prev = f"data/{data_choice}/images/img_{str(i-1).zfill(5)}.png"
+            # image_path_current = f"data/{data_choice}/images/img_{str(i).zfill(5)}.png"
 
             img_prev = cv2.imread(image_path_prev, cv2.IMREAD_GRAYSCALE)
             img_current = cv2.imread(image_path_current, cv2.IMREAD_GRAYSCALE)

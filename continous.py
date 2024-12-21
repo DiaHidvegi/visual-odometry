@@ -165,8 +165,8 @@ class ContinuousVO:
             reproj_error = 3.0
             print("Turn detected - using permissive parameters")
         else:
-            confidence = 0.99
-            reproj_error = 2.0
+            confidence = 0.995
+            reproj_error = 1.5
         
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
@@ -368,7 +368,6 @@ class ContinuousVO:
                     points3D = np.hstack([points3D, point3D])
                 else:
                     new_landmarks[idx] = False
-
 
             Pi = np.hstack([Pi, Ci[:, new_landmarks]])
             Xi = np.hstack([Xi, points3D])

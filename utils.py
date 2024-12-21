@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 class Constants:
     THRESHOLD_NEW_KEYPOINTS = 15 # given in pixels 
@@ -15,11 +16,11 @@ def get_k_params_imgs(dataset):
         "malaga": np.array([[621.184287,  0, 404.00760], [ 0, 621.18428, 309.05989], [ 0,  0,  1]])
     }
 
-    malaga_base_bath = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
+    malaga_base_path = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
     imgs = {
         "kitti": [f'data/kitti/05/image_0/{str(i).zfill(6)}.png' for i in range(3)],
         "parking": [f'data/parking/images/img_{str(i).zfill(5)}.png' for i in range(7)],
-        #"malaga": [malaga_base_bath + file for file in os.listdir(malaga_base_bath) if "left" in file][:2]
+        "malaga": [malaga_base_path + file for file in os.listdir(malaga_base_path) if "left" in file][:2]
     }
     
     params = {
