@@ -54,7 +54,7 @@ def main():
 
         except Exception as e:
             print(f"---- Error at frame {i}: {e} ----")
-            break
+            raise e
     
     visualizer.close()
 
