@@ -217,15 +217,38 @@ class ContinuousVO:
         errors = np.squeeze(projected_points) - points2D
         return np.mean(np.sqrt(np.sum(errors**2, axis=1)))
 
-    def compute_baseline_angle(self, point3D, t_cur, t_idx):
-        baseline = np.linalg.norm(t_cur - t_idx)
-        v1 = np.linalg.norm(point3D - t_idx)
-        v2 = np.linalg.norm(point3D - t_cur)
+    def compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
+        """
+        Compute the angle between bearing vectors from two camera positions to a 3D point.
+        """
+        # print(f"point3D shape: {point3D.shape}")
+        # print(f"t_cur shape: {t_cur.shape}")
+        # print(f"t_first shape: {t_first.shape}")
+        
+        # Everything should be a 1D vector
+        if len(point3D.shape) > 1:
+            point3D = point3D.flatten()
+        if len(t_cur.shape) > 1:
+            t_cur = t_cur.flatten()
+        if len(t_first.shape) > 1:
+            t_first = t_first.flatten()
+        
+        # Compute bearing vectors (normalized vectors from camera to point)
+        v_cur = point3D - t_cur
+        v_first = point3D - t_first
+        
+        v_cur = v_cur / np.linalg.norm(v_cur)
+        v_first = v_first / np.linalg.norm(v_first)
+        
+        # Compute angle between vectors
+        cos_angle = np.clip(np.dot(v_cur, v_first), -1.0, 1.0)
+        angle = np.arccos(cos_angle)
+        
+        return float(angle)
 
-        alpha = np.arccos((v1**2 + v2**2 - baseline**2)/(2*v1*v2)) * 180/np.pi
-        return alpha
-
-    def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray, pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray, 
+                     state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray, 
+                     pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Processes feature candidates between frames, updates candidate landmarks, and triangulates new 3D points.
 
@@ -341,7 +364,7 @@ class ContinuousVO:
                 # Calculate the baseline angle
                 alpha = self.compute_baseline_angle(point3D, t_cur, t_idx)
 
-                if alpha > Constants.THRESHOLD_CANDIDATES_ALPHA:
+                if alpha > np.deg2rad(Constants.THRESHOLD_CANDIDATES_ALPHA):
                     points3D = np.hstack([points3D, point3D])
                 else:
                     new_landmarks[idx] = False
