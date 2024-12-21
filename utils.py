@@ -30,11 +30,54 @@ def get_k_params_imgs(dataset):
             "minDistance": 10,
             "winSize": (21, 21),
             "iterative_params": {
-                "confidence": 0.99,
-                "reprojection_error": 2.0
+                "turning": {
+                    "confidence": 0.99,
+                    "reprojection_error": 2.5
+                },
+                "straight": {
+                    "confidence": 0.99,
+                    "reprojection_error": 1.15
+                }
             }
         },
-        "parking": {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(11, 11), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":1.0},
-        "malaga":  {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":5, "winSize":(31, 31), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":5.0}
+        "parking": {
+            "maxCorners":1000,
+            "qualityLevel":0.01,
+            "minDistance":10,
+            "dist_threshold_move":0,
+            "winSize":(11, 11),
+            "RANSAC_threshold":0.5,
+            "repro_threshold":1.0,
+            "iterative_params": {
+                "turning": {
+                    "confidence": 0.99,
+                    "reprojection_error": 2.5
+                },
+                "straight": {
+                    "confidence": 0.99,
+                    "reprojection_error": 1.15
+                }
+            }
+        },
+        "malaga": {
+            "maxCorners":1000,
+            "qualityLevel":0.01,
+            "minDistance":10,
+            "dist_threshold_move":5,
+            "winSize":(31, 31),
+            "RANSAC_prob":0.999,
+            "RANSAC_threshold":0.5,
+            "repro_threshold":5.0,
+            "iterative_params": {
+                "turning": {
+                    "confidence": 0.99,
+                    "reprojection_error": 3.0
+                },
+                "straight": {
+                    "confidence": 0.99,
+                    "reprojection_error": 1.7
+                }
+            }
+        }
     }
     return K[dataset], params[dataset], imgs[dataset]

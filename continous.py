@@ -20,6 +20,7 @@ class ContinuousVO:
         """
         self.K = K
         _, self.params, _ = get_k_params_imgs(datachoice)
+        self.datachoice = datachoice
 
     def process_frame(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState) -> Tuple[FrameState, np.ndarray]:
         """
@@ -161,12 +162,12 @@ class ContinuousVO:
         
         # Adjust parameters based on turning
         if turning:
-            confidence = 0.99
-            reproj_error = 2.5
+            confidence = self.params["iterative_params"]["turning"]["confidence"]
+            reproj_error = self.params["iterative_params"]["turning"]["reprojection_error"]
             print("Turn detected - using permissive parameters")
         else:
-            confidence = 0.99
-            reproj_error = 1.15
+            confidence = self.params["iterative_params"]["straight"]["confidence"]
+            reproj_error = self.params["iterative_params"]["straight"]["reprojection_error"]
         
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
