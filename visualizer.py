@@ -16,6 +16,15 @@ class Visualizer:
         self.global_trajectory_ax = self.fig.add_subplot(self.gs[1, 1])
         self.local_trajectory_ax = self.fig.add_subplot(self.gs[0:, 2:])
         
+        # Set fixed positions for legends
+        self.image_ax.legend(['Landmarks', 'Candidates'], 
+                           loc='upper right', 
+                           bbox_to_anchor=(0.98, 0.98))
+        
+        self.local_trajectory_ax.legend(['Trajectory', 'Landmarks'],
+                                      loc='upper right',
+                                      bbox_to_anchor=(0.98, 0.98))
+
         # initialize data storage
         self.landmarks_data = []
         self.candidates_data = []
@@ -50,6 +59,8 @@ class Visualizer:
             self.local_trajectory_line, = self.local_trajectory_ax.plot([], [], 'b-', label="Trajectory")
             self.local_points_scatter = self.local_trajectory_ax.scatter([], [], color='green', label="Landmarks")
             self.local_trajectory_ax.set_title("Local Trajectory")
+            # Add legend with fixed position
+            self.local_trajectory_ax.legend(bbox_to_anchor=(1.0, 1.0), loc='upper right')
         self.local_trajectory_line.set_data(self.poses[frame_start:frame_end, 3], self.poses[frame_start:frame_end, 11])
         
         # Update scatter points data
@@ -108,10 +119,12 @@ class Visualizer:
 
         # Update the image display
         if not hasattr(self, 'image_display'):
-            self.image_display = self.image_ax.imshow(image, animated=False)
+            self.image_display = self.image_ax.imshow(image, cmap='gray', animated=False)
             self.image_ax.set_title("Current Frame")
-            self.points_plot_lm, = self.image_ax.plot([], [], 'go', markersize=2)
-            self.points_plot_cnd, = self.image_ax.plot([], [], 'rx', markersize=2)
+            self.points_plot_lm, = self.image_ax.plot([], [], 'go', markersize=2, label="Landmarks")
+            self.points_plot_cnd, = self.image_ax.plot([], [], 'rx', markersize=2, label="Candidates")
+            # Add legend with fixed position
+            self.image_ax.legend(bbox_to_anchor=(1.0, 1.0), loc='upper right')
         else:
             self.image_display.set_data(image)
             self.points_plot_lm.set_data(frame_state.landmarks_image[0,:], frame_state.landmarks_image[1,:])
