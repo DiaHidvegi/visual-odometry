@@ -128,10 +128,10 @@ class ContinuousVO:
             Tuple[np.ndarray, np.ndarray]:
                 Pose as a 4x4 transformation matrix and inlier mask.
         """
-        #points2D = np.flip(points2D, axis=0)
         points2D = points2D.T
         points3D = points3D.T
         
+        # Initial pose estimation with RANSAC
         success, rvec, tvec, inliers = cv2.solvePnPRansac(
             points3D, points2D, self.K, None
         )
@@ -139,13 +139,32 @@ class ContinuousVO:
         if rvec is None or tvec is None or inliers is None:
             raise ValueError("Pose estimation failed.")
 
+        # Refine pose using only inliers
+        inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
+        inlier_mask[inliers.flatten()] = 1
+        
+        # Nonlinear refinement using Levenberg-Marquardt
+        if inliers.size > 0:
+            points3D_refined = points3D[inliers.flatten()]
+            points2D_refined = points2D[inliers.flatten()]
+            success, rvec_refined, tvec_refined = cv2.solvePnP(
+                points3D_refined, 
+                points2D_refined, 
+                self.K, 
+                None,
+                rvec,  # Initial rotation guess
+                tvec,  # Initial translation guess
+                useExtrinsicGuess=True,
+                flags=cv2.SOLVEPNP_ITERATIVE
+            )
+            if success:
+                rvec = rvec_refined
+                tvec = tvec_refined
+
         R_mat = cv2.Rodrigues(rvec)[0]
         pose = np.eye(4)
         pose[:3, :3] = R_mat.T
         pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
-
-        inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
-        inlier_mask[inliers.flatten()] = 1
 
         return pose, inlier_mask
 
