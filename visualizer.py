@@ -35,6 +35,13 @@ class Visualizer:
         plt.ion()
         plt.show()
 
+        # Add frame counter text
+        self.frame_counter = self.image_ax.text(0.02, 0.98, 'Frame: 0', 
+                                              transform=self.image_ax.transAxes,
+                                              color='white', fontsize=10,
+                                              bbox=dict(facecolor='black', alpha=0.5),
+                                              verticalalignment='top')
+
     def update(self, frame_state: FrameState, pose: np.ndarray, image):
         """
         Update the visualization with the new data.
@@ -129,6 +136,10 @@ class Visualizer:
             self.points_plot_lm.set_data(frame_state.landmarks_image[0,:], frame_state.landmarks_image[1,:])
             self.points_plot_cnd.set_data(frame_state.cand_landmarks_image_current[0,:], frame_state.cand_landmarks_image_current[1,:])
         self.image_ax.axis('off')
+
+        # Update frame counter
+        current_frame = len(self.landmarks_data)
+        self.frame_counter.set_text(f'Frame: {current_frame}')
 
         # Show updated plots
         self.fig.canvas.draw_idle()
