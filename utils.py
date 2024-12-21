@@ -1,10 +1,10 @@
 import numpy as np
 
 class Constants:
-    THRESHOLD_NEW_KEYPOINTS = 10 # given in pixels 
-    THRESHOLD_PIXEL_DIST_TRIANGULATION = 10 # given in pixels
+    THRESHOLD_NEW_KEYPOINTS = 15 # given in pixels 
+    THRESHOLD_PIXEL_DIST_TRIANGULATION = 15 # given in pixels
     THRESHOLD_PIXEL_DIST_CANDIDATES_MIN = 2 # given in pixels
-    THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = 50 # given in pixels
+    THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = 100 # given in pixels
     THRESHOLD_CANDIDATES_ALPHA = 1
 
 def get_k_params_imgs(dataset):
@@ -23,7 +23,16 @@ def get_k_params_imgs(dataset):
     }
     
     params = {
-        "kitti":   {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":5, "winSize":(11, 11), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":3.0},
+        "kitti": {
+            "maxCorners": 2000,
+            "qualityLevel": 0.01,
+            "minDistance": 10,
+            "winSize": (21, 21),
+            "iterative_params": {
+                "confidence": 0.99,
+                "reprojection_error": 2.0
+            }
+        },
         "parking": {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(11, 11), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":1.0},
         "malaga":  {"maxCorners":1000, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":5, "winSize":(31, 31), "RANSAC_prob":0.999, "RANSAC_threshold":0.5, "repro_threshold":5.0}
     }

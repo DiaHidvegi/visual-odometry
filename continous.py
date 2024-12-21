@@ -99,22 +99,41 @@ class ContinuousVO:
                 - Error array for each tracked point.
         """
         if prev_keypoints.size == 0:
-            # No keypoints to track
             return np.empty((2, 0)), np.empty((0,), dtype=np.uint8), np.empty((0,), dtype=np.float32)
 
-        # Convert keypoints to the correct shape for OpenCV (Nx1x2)
         prev_keypoints_cv = prev_keypoints.T.reshape(-1, 1, 2).astype(np.float32)
 
-        lk_params = dict(winSize=(11, 11), maxLevel=0, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01))
-        tracked_points, status, error = cv2.calcOpticalFlowPyrLK(img_prev, img_current, prev_keypoints_cv, None, **lk_params)
-
-        # Reshape tracked points back to 2xN
+        # Enhanced LK parameters for better tracking during turns
+        lk_params = dict(
+            winSize=(21, 21),  # Larger window for better tracking
+            maxLevel=3,        # Use pyramid levels for better tracking of larger movements
+            criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01),
+            minEigThreshold=0.001  # Lower threshold for better point retention
+        )
+        
+        # Forward-backward tracking for better reliability
+        tracked_points, status, error = cv2.calcOpticalFlowPyrLK(
+            img_prev, img_current, prev_keypoints_cv, None, **lk_params
+        )
+        
+        # Backward tracking to verify points
+        if tracked_points is not None:
+            back_tracked, back_status, _ = cv2.calcOpticalFlowPyrLK(
+                img_current, img_prev, tracked_points, None, **lk_params
+            )
+            
+            # Compare back-tracked points with original points
+            if back_tracked is not None:
+                back_tracked = back_tracked.reshape(-1, 2)
+                prev_keypoints_cv = prev_keypoints_cv.reshape(-1, 2)
+                diff = abs(prev_keypoints_cv - back_tracked).max(-1)
+                status = status.flatten() & (diff < 1.0)  # 1.0 pixel threshold
+        
         tracked_points = tracked_points.reshape(-1, 2).T
         status = status.flatten()
         error = error.flatten()
 
         return tracked_points, status, error
-
 
     def estimate_pose(self, points2D: np.ndarray, points3D: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -131,42 +150,68 @@ class ContinuousVO:
         points2D = points2D.T
         points3D = points3D.T
         
-        # Initial pose estimation with RANSAC
-        success, rvec, tvec, inliers = cv2.solvePnPRansac(
-            points3D, points2D, self.K, None
-        )
-
-        if rvec is None or tvec is None or inliers is None:
-            raise ValueError("Pose estimation failed.")
-
-        # Refine pose using only inliers
-        inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
-        inlier_mask[inliers.flatten()] = 1
+        if points2D.shape[0] < 6:
+            raise ValueError(f"Too few input points: {points2D.shape[0]}")
         
-        # Nonlinear refinement using Levenberg-Marquardt
-        if inliers.size > 0:
-            points3D_refined = points3D[inliers.flatten()]
-            points2D_refined = points2D[inliers.flatten()]
-            success, rvec_refined, tvec_refined = cv2.solvePnP(
-                points3D_refined, 
-                points2D_refined, 
+        # Detect if we're likely in a turn by checking point distribution
+        points_movement = np.std(points2D, axis=0)
+        turning = np.mean(points_movement) < 80  # Threshold for turn detection
+        
+        # Adjust parameters based on whether we're turning
+        if turning:
+            confidence = 0.99
+            reproj_error = 3.0  # More permissive during turns
+            print("Turn detected - using permissive parameters")
+        else:
+            confidence = 0.99
+            reproj_error = 2.0  # Conservative for straight paths
+        
+        try:
+            success, rvec, tvec, inliers = cv2.solvePnPRansac(
+                points3D, 
+                points2D, 
                 self.K, 
                 None,
-                rvec,  # Initial rotation guess
-                tvec,  # Initial translation guess
-                useExtrinsicGuess=True,
-                flags=cv2.SOLVEPNP_ITERATIVE
+                confidence=confidence,
+                reprojectionError=reproj_error,
+                iterationsCount=1000,  # Increase iterations for better chances
+                flags=cv2.SOLVEPNP_P3P
             )
-            if success:
-                rvec = rvec_refined
-                tvec = tvec_refined
+            
+            if not success or inliers is None or len(inliers) < 6:
+                raise ValueError(f"Pose estimation failed: {len(inliers) if inliers is not None else 0} inliers")
+            
+            # Calculate error for monitoring
+            error = self.calculate_reprojection_error(
+                points3D[inliers.flatten()],
+                points2D[inliers.flatten()],
+                rvec, tvec
+            )
+            print(f"Inliers: {len(inliers)}, Error: {error:.2f}, {'TURNING' if turning else 'STRAIGHT'}")
+            
+            # Create pose matrix
+            R_mat = cv2.Rodrigues(rvec)[0]
+            pose = np.eye(4)
+            pose[:3, :3] = R_mat.T
+            pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
+            
+            # Create inlier mask
+            inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
+            inlier_mask[inliers.flatten()] = 1
+            
+            return pose, inlier_mask
+            
+        except cv2.error as e:
+            raise ValueError(f"OpenCV error during pose estimation: {str(e)}")
 
-        R_mat = cv2.Rodrigues(rvec)[0]
-        pose = np.eye(4)
-        pose[:3, :3] = R_mat.T
-        pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
-
-        return pose, inlier_mask
+    def calculate_reprojection_error(self, points3D: np.ndarray, points2D: np.ndarray, 
+                                   rvec: np.ndarray, tvec: np.ndarray) -> float:
+        """
+        Calculate the mean reprojection error for a set of points.
+        """
+        projected_points, _ = cv2.projectPoints(points3D, rvec, tvec, self.K, None)
+        errors = np.squeeze(projected_points) - points2D
+        return np.mean(np.sqrt(np.sum(errors**2, axis=1)))
 
     def compute_baseline_angle(self, point3D, t_cur, t_idx):
         baseline = np.linalg.norm(t_cur - t_idx)
