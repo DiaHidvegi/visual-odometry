@@ -103,31 +103,29 @@ class ContinuousVO:
 
         prev_keypoints_cv = prev_keypoints.T.reshape(-1, 1, 2).astype(np.float32)
 
-        # Enhanced LK parameters for better tracking during turns
+        # Enhanced LK parameters
         lk_params = dict(
-            winSize=(21, 21),  # Larger window for better tracking
-            maxLevel=3,        # Use pyramid levels for better tracking of larger movements
+            winSize=(21, 21),
+            maxLevel=3,
             criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01),
-            minEigThreshold=0.001  # Lower threshold for better point retention
+            minEigThreshold=0.001
         )
         
-        # Forward-backward tracking for better reliability
+        # Forward-backward tracking
         tracked_points, status, error = cv2.calcOpticalFlowPyrLK(
             img_prev, img_current, prev_keypoints_cv, None, **lk_params
         )
         
-        # Backward tracking to verify points
         if tracked_points is not None:
             back_tracked, back_status, _ = cv2.calcOpticalFlowPyrLK(
                 img_current, img_prev, tracked_points, None, **lk_params
             )
             
-            # Compare back-tracked points with original points
             if back_tracked is not None:
                 back_tracked = back_tracked.reshape(-1, 2)
                 prev_keypoints_cv = prev_keypoints_cv.reshape(-1, 2)
                 diff = abs(prev_keypoints_cv - back_tracked).max(-1)
-                status = status.flatten() & (diff < 1.0)  # 1.0 pixel threshold
+                status = status.flatten() & (diff < 1.0)
         
         tracked_points = tracked_points.reshape(-1, 2).T
         status = status.flatten()
@@ -153,18 +151,22 @@ class ContinuousVO:
         if points2D.shape[0] < 6:
             raise ValueError(f"Too few input points: {points2D.shape[0]}")
         
-        # Detect if we're likely in a turn by checking point distribution
+        # Improved turn detection
         points_movement = np.std(points2D, axis=0)
-        turning = np.mean(points_movement) < 80  # Threshold for turn detection
+        mean_movement = np.mean(points_movement)
+        point_count = points2D.shape[0]
         
-        # Adjust parameters based on whether we're turning
+        # Turn detection based on reduced spread (clustering of points) and point count reduction
+        turning = (mean_movement < 70) or (point_count < 50 and mean_movement < 90)
+        
+        # Adjust parameters based on turning
         if turning:
             confidence = 0.99
-            reproj_error = 3.0  # More permissive during turns
+            reproj_error = 3.0
             print("Turn detected - using permissive parameters")
         else:
             confidence = 0.99
-            reproj_error = 2.0  # Conservative for straight paths
+            reproj_error = 2.0
         
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
@@ -174,7 +176,7 @@ class ContinuousVO:
                 None,
                 confidence=confidence,
                 reprojectionError=reproj_error,
-                iterationsCount=1000,  # Increase iterations for better chances
+                iterationsCount=1000,
                 flags=cv2.SOLVEPNP_P3P
             )
             
@@ -187,7 +189,9 @@ class ContinuousVO:
                 points2D[inliers.flatten()],
                 rvec, tvec
             )
-            print(f"Inliers: {len(inliers)}, Error: {error:.2f}, {'TURNING' if turning else 'STRAIGHT'}")
+            print(f"Points: {point_count}, Inliers: {len(inliers)}, "
+                  f"Error: {error:.2f}, Movement: {mean_movement:.1f}, "
+                  f"Status: {'TURNING' if turning else 'STRAIGHT'}")
             
             # Create pose matrix
             R_mat = cv2.Rodrigues(rvec)[0]
