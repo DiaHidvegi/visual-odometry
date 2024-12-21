@@ -8,13 +8,13 @@ class Visualizer:
     def __init__(self):
         # create a custom layout using gridspec
         self.fig = plt.figure(figsize=(10, 6))
-        self.gs = gridspec.GridSpec(2, 4, figure=self.fig)
+        self.gs = gridspec.GridSpec(2, 4, figure=self.fig, height_ratios=[1, 1])
         
         # initialize subplots
         self.image_ax = self.fig.add_subplot(self.gs[0, 0:2])
         self.keypoints_ax = self.fig.add_subplot(self.gs[1, 0])
         self.global_trajectory_ax = self.fig.add_subplot(self.gs[1, 1])
-        self.local_trajectory_ax = self.fig.add_subplot(self.gs[0:, 2:])
+        self.local_trajectory_ax = self.fig.add_subplot(self.gs[0:2, 2:])
         
         # Set fixed positions for legends
         self.image_ax.legend(['Landmarks', 'Candidates'], 
@@ -79,7 +79,6 @@ class Visualizer:
         if not hasattr(self, 'global_trajectory_line'):
             self.global_trajectory_line, = self.global_trajectory_ax.plot([], [], 'b-', label="Trajectory")
             self.global_trajectory_ax.set_title("Global Trajectory")
-            self.global_trajectory_ax.grid(True)
         self.global_trajectory_line.set_data(self.poses[:, 3], self.poses[:, 11])
         
         # Always show the complete trajectory with padding
