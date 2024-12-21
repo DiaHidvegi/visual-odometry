@@ -99,22 +99,39 @@ class ContinuousVO:
                 - Error array for each tracked point.
         """
         if prev_keypoints.size == 0:
-            # No keypoints to track
             return np.empty((2, 0)), np.empty((0,), dtype=np.uint8), np.empty((0,), dtype=np.float32)
 
-        # Convert keypoints to the correct shape for OpenCV (Nx1x2)
         prev_keypoints_cv = prev_keypoints.T.reshape(-1, 1, 2).astype(np.float32)
 
-        lk_params = dict(winSize=(11, 11), maxLevel=0, criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01))
-        tracked_points, status, error = cv2.calcOpticalFlowPyrLK(img_prev, img_current, prev_keypoints_cv, None, **lk_params)
-
-        # Reshape tracked points back to 2xN
+        # Enhanced LK parameters
+        lk_params = dict(
+            winSize=(21, 21),
+            maxLevel=3,
+            criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01),
+            minEigThreshold=0.001
+        )
+        
+        # Forward-backward tracking
+        tracked_points, status, error = cv2.calcOpticalFlowPyrLK(
+            img_prev, img_current, prev_keypoints_cv, None, **lk_params
+        )
+        
+        if tracked_points is not None:
+            back_tracked, back_status, _ = cv2.calcOpticalFlowPyrLK(
+                img_current, img_prev, tracked_points, None, **lk_params
+            )
+            
+            if back_tracked is not None:
+                back_tracked = back_tracked.reshape(-1, 2)
+                prev_keypoints_cv = prev_keypoints_cv.reshape(-1, 2)
+                diff = abs(prev_keypoints_cv - back_tracked).max(-1)
+                status = status.flatten() & (diff < 1.0)
+        
         tracked_points = tracked_points.reshape(-1, 2).T
         status = status.flatten()
         error = error.flatten()
 
         return tracked_points, status, error
-
 
     def estimate_pose(self, points2D: np.ndarray, points3D: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -128,29 +145,110 @@ class ContinuousVO:
             Tuple[np.ndarray, np.ndarray]:
                 Pose as a 4x4 transformation matrix and inlier mask.
         """
-        #points2D = np.flip(points2D, axis=0)
         points2D = points2D.T
         points3D = points3D.T
         
-        success, rvec, tvec, inliers = cv2.solvePnPRansac(
-            points3D, points2D, self.K, None
-        )
+        if points2D.shape[0] < 6:
+            raise ValueError(f"Too few input points: {points2D.shape[0]}")
+        
+        # Improved turn detection
+        points_movement = np.std(points2D, axis=0)
+        mean_movement = np.mean(points_movement)
+        point_count = points2D.shape[0]
+        
+        # Turn detection based on reduced spread (clustering of points) and point count reduction
+        turning = (mean_movement < 70) or (point_count < 50 and mean_movement < 90)
+        
+        # Adjust parameters based on turning
+        if turning:
+            confidence = 0.99
+            reproj_error = 2.5
+            print("Turn detected - using permissive parameters")
+        else:
+            confidence = 0.99
+            reproj_error = 1.15
+        
+        try:
+            success, rvec, tvec, inliers = cv2.solvePnPRansac(
+                points3D, 
+                points2D, 
+                self.K, 
+                None,
+                confidence=confidence,
+                reprojectionError=reproj_error,
+                iterationsCount=1000,
+                flags=cv2.SOLVEPNP_P3P
+            )
+            
+            if not success or inliers is None or len(inliers) < 6:
+                raise ValueError(f"Pose estimation failed: {len(inliers) if inliers is not None else 0} inliers")
+            
+            # Calculate error for monitoring
+            error = self.calculate_reprojection_error(
+                points3D[inliers.flatten()],
+                points2D[inliers.flatten()],
+                rvec, tvec
+            )
+            print(f"Points: {point_count}, Inliers: {len(inliers)}, "
+                  f"Error: {error:.2f}, Movement: {mean_movement:.1f}, "
+                  f"Status: {'TURNING' if turning else 'STRAIGHT'}")
+            
+            # Create pose matrix
+            R_mat = cv2.Rodrigues(rvec)[0]
+            pose = np.eye(4)
+            pose[:3, :3] = R_mat.T
+            pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
+            
+            # Create inlier mask
+            inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
+            inlier_mask[inliers.flatten()] = 1
+            
+            return pose, inlier_mask
+            
+        except cv2.error as e:
+            raise ValueError(f"OpenCV error during pose estimation: {str(e)}")
 
-        if rvec is None or tvec is None or inliers is None:
-            raise ValueError("Pose estimation failed.")
+    def calculate_reprojection_error(self, points3D: np.ndarray, points2D: np.ndarray, 
+                                   rvec: np.ndarray, tvec: np.ndarray) -> float:
+        """
+        Calculate the mean reprojection error for a set of points.
+        """
+        projected_points, _ = cv2.projectPoints(points3D, rvec, tvec, self.K, None)
+        errors = np.squeeze(projected_points) - points2D
+        return np.mean(np.sqrt(np.sum(errors**2, axis=1)))
 
-        R_mat = cv2.Rodrigues(rvec)[0]
-        pose = np.eye(4)
-        pose[:3, :3] = R_mat.T
-        pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
+    def compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
+        """
+        Compute the angle between bearing vectors from two camera positions to a 3D point.
+        """
+        # print(f"point3D shape: {point3D.shape}")
+        # print(f"t_cur shape: {t_cur.shape}")
+        # print(f"t_first shape: {t_first.shape}")
+        
+        # Everything should be a 1D vector
+        if len(point3D.shape) > 1:
+            point3D = point3D.flatten()
+        if len(t_cur.shape) > 1:
+            t_cur = t_cur.flatten()
+        if len(t_first.shape) > 1:
+            t_first = t_first.flatten()
+        
+        # Compute bearing vectors (normalized vectors from camera to point)
+        v_cur = point3D - t_cur
+        v_first = point3D - t_first
+        
+        v_cur = v_cur / np.linalg.norm(v_cur)
+        v_first = v_first / np.linalg.norm(v_first)
+        
+        # Compute angle between vectors
+        cos_angle = np.clip(np.dot(v_cur, v_first), -1.0, 1.0)
+        angle = np.arccos(cos_angle)
+        
+        return float(angle)
 
-        inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
-        inlier_mask[inliers.flatten()] = 1
-
-        return pose, inlier_mask
-    
-
-    def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray, pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray, 
+                     state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray, 
+                     pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Processes feature candidates between frames, updates candidate landmarks, and triangulates new 3D points.
 
@@ -263,13 +361,10 @@ class ContinuousVO:
                     new_landmarks[idx] = False
                     continue
 
-                baseline = np.linalg.norm(t_cur - t_idx)
-                v1 = np.linalg.norm(point3D - t_idx)
-                v2 = np.linalg.norm(point3D - t_cur)
+                # Calculate the baseline angle
+                alpha = self.compute_baseline_angle(point3D, t_cur, t_idx)
 
-                alpha = np.arccos((v1**2 + v2**2 - baseline**2)/(2*v1*v2)) * 180/np.pi
-
-                if alpha > Constants.THRESHOLD_CANDIDATES_ALPHA:
+                if abs(alpha) > np.deg2rad(Constants.THRESHOLD_CANDIDATES_ALPHA):
                     points3D = np.hstack([points3D, point3D])
                 else:
                     new_landmarks[idx] = False
@@ -280,8 +375,6 @@ class ContinuousVO:
             Ci = Ci[:, no_new_landmark]
             Fi = Fi[:, no_new_landmark]
             Ti = Ti[:, no_new_landmark]
-
-
 
         # Add new features to Ci, Fi, Ti
         if new_features.size > 0:  
