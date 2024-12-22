@@ -220,6 +220,15 @@ class ContinuousVO:
                                      rvec: np.ndarray, tvec: np.ndarray) -> float:
         """
         Calculate the mean reprojection error for a set of points.
+
+        Args:
+            points3D (np.ndarray): 3D points in world coordinates (shape Nx3).
+            points2D (np.ndarray): 2D points in image coordinates (shape Nx2).
+            rvec (np.ndarray): Rotation vector.
+            tvec (np.ndarray): Translation vector.
+
+        Returns:
+            float: Mean reprojection error across all points.
         """
         projected_points, _ = cv2.projectPoints(
             points3D, rvec, tvec, self.K, None)
@@ -229,6 +238,14 @@ class ContinuousVO:
     def compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
         """
         Compute the angle between bearing vectors from two camera positions to a 3D point.
+
+        Args:
+            point3D (np.ndarray): 3D point in world coordinates.
+            t_cur (np.ndarray): Current camera position.
+            t_first (np.ndarray): First camera position.
+
+        Returns:
+            float: Angle in radians between the two bearing vectors.
         """
         # print(f"point3D shape: {point3D.shape}")
         # print(f"t_cur shape: {t_cur.shape}")
