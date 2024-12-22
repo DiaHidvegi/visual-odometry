@@ -30,16 +30,17 @@ class FeatureParams:
 
 
 class ContinuousVO:
-    def __init__(self, K: np.ndarray, datachoice: str):
+    def __init__(self, K: np.ndarray, dataset: str):
         """
         Initializes the Continuous Visual Odometry pipeline.
 
         Args:
             K (np.ndarray): Intrinsic camera matrix.
+            dataset (str): Dataset to use for training.
         """
         self.K = K
-        _, self.params, _ = get_k_params_imgs(datachoice)
-        self.datachoice = datachoice
+        self.datachoice = dataset
+        _, self.params, _ = get_k_params_imgs(dataset)
         self.tracking_params = TrackingParams()
         self.feature_params = FeatureParams()
 
