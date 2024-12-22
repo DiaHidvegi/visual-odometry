@@ -85,6 +85,13 @@ The pipeline provides real-time visualization with four panels:
 - Global trajectory
 - Local trajectory with visible landmarks
 
+## Authors
+
+- Nicolas Schuler [(NicSchuler)](https://github.com/NicSchuler)
+- Jakob Schlieter [(jschli)](https://github.com/jschli)
+- Max Stralz [(maxstralz)](https://github.com/maxstralz)
+- Diana Hidvegi [(Dia Hidvegi)](https://github.com/DiaHidvegi)
+
 ## Troubleshooting
 
 If you encounter any issues:
