@@ -53,6 +53,7 @@ data/
 
 2. **Malaga Dataset**:
    - Download from [here](https://rpg.ifi.uzh.ch/docs/teaching/2024/malaga-urban-dataset-extract-07.zip)
+   - After unzipping, rename the top folder from "malaga-urban-dataset-extract-07" to "malaga"
    - Extract to `data/malaga/`
 
 3. **Parking Dataset**:

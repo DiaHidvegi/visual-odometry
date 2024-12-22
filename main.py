@@ -106,7 +106,7 @@ def main() -> None:
 
             except Exception as e:
                 print(f"Error processing frame {frame_idx}: {e}")
-                raise
+                raise e
 
     finally:
         visualizer.close()
