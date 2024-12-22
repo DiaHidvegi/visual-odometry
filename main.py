@@ -80,7 +80,7 @@ def main() -> None:
     # Initialize components
     initialization = Initialization(config.dataset, False)
     visualizer = Visualizer()
-    vo = ContinuousVO(K=initialization.K, datachoice=config.dataset)
+    vo = ContinuousVO(K=initialization.K, dataset=config.dataset)
     image_loader = ImageLoader(config.dataset)
 
     # Initialize state

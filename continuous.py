@@ -39,7 +39,7 @@ class ContinuousVO:
             dataset (str): Dataset to use for training.
         """
         self.K = K
-        self.datachoice = dataset
+        self.dataset = dataset
         _, self.params, _ = get_k_params_imgs(dataset)
         self.tracking_params = TrackingParams()
         self.feature_params = FeatureParams()
