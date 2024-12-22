@@ -1,3 +1,4 @@
+import random
 import os
 import cv2
 import numpy as np
@@ -5,6 +6,11 @@ import matplotlib.pyplot as plt
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+# Set all seeds
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 class Initialization:

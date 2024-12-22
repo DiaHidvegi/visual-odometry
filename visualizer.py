@@ -3,6 +3,12 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 import cv2
 from framestate import FrameState, generate_frame_state
+import random
+
+# Set all seeds
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 class Visualizer:

@@ -11,6 +11,12 @@ from framestate import FrameState
 from continuous import ContinuousVO
 
 from time import sleep
+import random
+
+# Set all seeds
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 @dataclass

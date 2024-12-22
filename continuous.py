@@ -1,3 +1,4 @@
+import random
 import cv2
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -9,6 +10,12 @@ from scipy.spatial.distance import cdist
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+
+# Set all seeds
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 @dataclass

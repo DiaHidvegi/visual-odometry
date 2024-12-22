@@ -1,5 +1,11 @@
 import numpy as np
 from dataclasses import dataclass
+import random
+
+# Set all seeds
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 @dataclass
