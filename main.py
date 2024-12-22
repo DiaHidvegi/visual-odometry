@@ -75,7 +75,7 @@ def initialize_state(initialization: Initialization) -> FrameState:
 
 def main() -> None:
     # Configuration
-    config = Config(dataset="parking")  # kitti, parking, malaga
+    config = Config(dataset="kitti")
 
     # Initialize components
     initialization = Initialization(config.dataset, False)
