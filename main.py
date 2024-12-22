@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Tuple, Optional
 from dataclasses import dataclass
+import argparse
 
 from initialization import Initialization
 from visualizer import Visualizer
@@ -79,9 +80,9 @@ def initialize_state(initialization: Initialization) -> FrameState:
     )
 
 
-def main() -> None:
+def main(ds: str) -> None:
     # Configuration
-    config = Config(dataset="kitti")
+    config = Config(dataset=ds)
 
     # Initialize components
     initialization = Initialization(config.dataset, False)
@@ -113,4 +114,17 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="A script to demonstrate argparse.")
+
+    # Add arguments
+    parser.add_argument(
+        "-d", "--dataset",
+        type=str,
+        required=False,
+        default="parking",
+        help="Name of the dataset (malaga, kitti, parking)"
+    )
+
+    args = parser.parse_args()
+
+    main(args.dataset)
