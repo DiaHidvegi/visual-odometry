@@ -85,13 +85,6 @@ The pipeline provides real-time visualization with four panels:
 - Global trajectory
 - Local trajectory with visible landmarks
 
-## Authors
-
-- Nicolas Schuler [(NicSchuler)](https://github.com/NicSchuler)
-- Jakob Schlieter [(jschli)](https://github.com/jschli)
-- Max Stralz [(maxstralz)](https://github.com/maxstralz)
-- Diana Hidvegi [(Dia Hidvegi)](https://github.com/DiaHidvegi)
-
 ## Troubleshooting
 
 If you encounter any issues:
@@ -99,3 +92,10 @@ If you encounter any issues:
 2. Check that the conda environment was created and activated correctly
 3. Ensure the selected dataset exists in the `data` directory
 4. Verify that the images are in the correct format (PNG for KITTI/Parking, JPG for Malaga)
+
+## Authors
+
+- Nicolas Schuler [(NicSchuler)](https://github.com/NicSchuler)
+- Jakob Schlieter [(jschli)](https://github.com/jschli)
+- Max Stralz [(maxstralz)](https://github.com/maxstralz)
+- Diana Hidvegi [(Dia Hidvegi)](https://github.com/DiaHidvegi)
