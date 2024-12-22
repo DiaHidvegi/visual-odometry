@@ -12,6 +12,8 @@ SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 
+cv2.setRNGSeed(SEED)
+
 
 class Initialization:
     def __init__(self, dataset, show_plots=False):

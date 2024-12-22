@@ -19,6 +19,7 @@ SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 
+cv2.setRNGSeed(SEED)
 
 @dataclass
 class Config:

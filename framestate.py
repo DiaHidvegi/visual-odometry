@@ -1,11 +1,14 @@
 import numpy as np
 from dataclasses import dataclass
 import random
+import cv2
 
 # Set all seeds
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
+
+cv2.setRNGSeed(SEED)
 
 
 @dataclass
