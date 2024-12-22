@@ -4,7 +4,7 @@ import os
 from initialization import Initialization
 from visualizer import Visualizer
 from framestate import FrameState
-from continous import ContinuousVO
+from continuous import ContinuousVO
 
 from time import sleep
 
