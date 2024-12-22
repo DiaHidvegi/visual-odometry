@@ -17,7 +17,7 @@ from time import sleep
 class Config:
     dataset: str
     max_frames: int = 1000
-    visualization_delay: float = 0.05
+    visualization_delay: float = 0.1
 
 
 class ImageLoader:
@@ -75,7 +75,7 @@ def initialize_state(initialization: Initialization) -> FrameState:
 
 def main() -> None:
     # Configuration
-    config = Config(dataset="malaga")  # kitti, parking, malaga
+    config = Config(dataset="parking")  # kitti, parking, malaga
 
     # Initialize components
     initialization = Initialization(config.dataset, False)

@@ -1,14 +1,32 @@
 import cv2
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-from typing import Tuple
+from typing import Tuple, Optional, Dict, Any
+from dataclasses import dataclass
 from framestate import FrameState
-
 from constants import Constants, get_k_params_imgs
 from scipy.spatial.distance import cdist
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+
+@dataclass
+class TrackingParams:
+    """Parameters for LK optical flow tracking"""
+    win_size: Tuple[int, int] = (21, 21)
+    max_level: int = 3
+    criteria: Tuple = (cv2.TERM_CRITERIA_EPS |
+                       cv2.TERM_CRITERIA_COUNT, 30, 0.01)
+    min_eig_threshold: float = 0.001
+
+
+@dataclass
+class FeatureParams:
+    """Parameters for feature detection"""
+    max_corners: int = 1000
+    quality_level: float = 0.01
+    min_distance: float = 10.0
 
 
 class ContinuousVO:
@@ -22,10 +40,12 @@ class ContinuousVO:
         self.K = K
         _, self.params, _ = get_k_params_imgs(datachoice)
         self.datachoice = datachoice
+        self.tracking_params = TrackingParams()
+        self.feature_params = FeatureParams()
 
     def process_frame(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState) -> Tuple[FrameState, np.ndarray]:
         """
-        Process the current frame, update the frame state, and estimate the current pose.
+        Process the current frame and estimate pose.
 
         Args:
             img_current (np.ndarray): Current frame (grayscale image).
@@ -35,61 +55,40 @@ class ContinuousVO:
         Returns:
             Tuple[FrameState, np.ndarray]: Updated frame state and the current pose as a 4x4 transformation matrix.
         """
-
-        show_plots = False
-
-        tracked_points, status, _ = self.track_keypoints(
+        # Track existing keypoints
+        tracked_points, status, _ = self._track_keypoints(
             state_prev.landmarks_image, img_prev, img_current)
 
+        # Filter valid points
         valid_idx = np.where(status == 1)[0]
         Pi = tracked_points[:, valid_idx]
         Xi = state_prev.landmarks_world[:, valid_idx]
 
-        if show_plots:
-            # Optional: Visualize tracked points
-            img_old = img_prev.copy()
-            Pi_prev = state_prev.landmarks_image[:, valid_idx]
-            for pt in range(Pi_prev.shape[1]):
-                x, y = Pi_prev[0, pt], Pi_prev[1, pt]
-                cv2.circle(img_old, (int(x), int(y)), 3, (255, 255, 125), -1)
+        # Estimate pose
+        pose, inlier_mask = self._estimate_pose(Pi, Xi)
 
-            img_tracked = img_current.copy()
-            for pt in range(Pi_prev.shape[1]):
-                x, y = Pi[0, pt], Pi[1, pt]
-                cv2.circle(img_tracked, (int(x), int(y)),
-                           3, (255, 255, 125), -1)
-
-            cv2.imshow("Initial Points", img_old)
-            cv2.imshow("Tracked Points", img_tracked)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-
-        pose, inlier_mask = self.estimate_pose(Pi, Xi)
-
+        # Filter inliers
         inliers_idx = np.where(inlier_mask == 1)[0]
         Pi = Pi[:, inliers_idx]
         Xi = Xi[:, inliers_idx]
 
-        Pi, Xi, Ci, Fi, Ti = self.handle_candidates(
+        # Handle candidate points
+        Pi, Xi, Ci, Fi, Ti = self._handle_candidates(
             img_current, img_prev, state_prev, Pi, Xi, pose)
-
-        # print(Ci.shape)
 
         pose = pose[:3, :].reshape((1, -1))
 
-        new_state = FrameState(
+        return FrameState(
             landmarks_image=Pi,
             landmarks_world=Xi,
             cand_landmarks_image_current=Ci,
             cand_landmarks_image_first=Fi,
             cand_landmarks_transform=Ti
-        )
+        ), pose
 
-        return new_state, pose
-
-    def track_keypoints(self, prev_keypoints: np.ndarray, img_prev: np.ndarray, img_current: np.ndarray):
+    def _track_keypoints(self, prev_keypoints: np.ndarray, img_prev: np.ndarray, img_current: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Track keypoints between two frames using Lucas-Kanade optical flow.
+        Track keypoints using Lucas-Kanade optical flow with forward-backward verification.
 
         Args:
             prev_keypoints (np.ndarray): Previous keypoints to track (2xN array of [x, y] coordinates).
@@ -108,26 +107,24 @@ class ContinuousVO:
         prev_keypoints_cv = prev_keypoints.T.reshape(
             -1, 1, 2).astype(np.float32)
 
-        # Enhanced LK parameters
         lk_params = dict(
-            winSize=(21, 21),
-            maxLevel=3,
-            criteria=(cv2.TERM_CRITERIA_EPS |
-                      cv2.TERM_CRITERIA_COUNT, 30, 0.01),
-            minEigThreshold=0.001
+            winSize=self.tracking_params.win_size,
+            maxLevel=self.tracking_params.max_level,
+            criteria=self.tracking_params.criteria,
+            minEigThreshold=self.tracking_params.min_eig_threshold
         )
 
-        # Forward-backward tracking
+        # Forward tracking
         tracked_points, status, error = cv2.calcOpticalFlowPyrLK(
-            img_prev, img_current, prev_keypoints_cv, None, **lk_params
-        )
+            img_prev, img_current, prev_keypoints_cv, None, **lk_params)
 
         if tracked_points is not None:
+            # Backward tracking for verification
             back_tracked, back_status, _ = cv2.calcOpticalFlowPyrLK(
-                img_current, img_prev, tracked_points, None, **lk_params
-            )
+                img_current, img_prev, tracked_points, None, **lk_params)
 
             if back_tracked is not None:
+                # Verify tracking consistency
                 back_tracked = back_tracked.reshape(-1, 2)
                 prev_keypoints_cv = prev_keypoints_cv.reshape(-1, 2)
                 diff = abs(prev_keypoints_cv - back_tracked).max(-1)
@@ -139,9 +136,9 @@ class ContinuousVO:
 
         return tracked_points, status, error
 
-    def estimate_pose(self, points2D: np.ndarray, points3D: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def _estimate_pose(self, points2D: np.ndarray, points3D: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Estimates the camera pose using P3P and RANSAC.
+        Estimate camera pose using P3P-RANSAC with adaptive parameters.
 
         Args:
             points2D (np.ndarray): 2D keypoints in the current frame (shape 2xK).
@@ -157,32 +154,20 @@ class ContinuousVO:
         if points2D.shape[0] < 6:
             raise ValueError(f"Too few input points: {points2D.shape[0]}")
 
-        # Improved turn detection
+        # Calculate movement of points
         points_movement = np.std(points2D, axis=0)
         mean_movement = np.mean(points_movement)
         point_count = points2D.shape[0]
 
-        # Turn detection based on reduced spread (clustering of points) and point count reduction
-        turning = (mean_movement < 70) or (
-            point_count < 50 and mean_movement < 90)
-
-        # Adjust parameters based on turning
-        if turning:
-            confidence = self.params["iterative_params"]["turning"]["confidence"]
-            reproj_error = self.params["iterative_params"]["turning"]["reprojection_error"]
-            print("Turn detected - using permissive parameters")
-        else:
-            confidence = self.params["iterative_params"]["straight"]["confidence"]
-            reproj_error = self.params["iterative_params"]["straight"]["reprojection_error"]
+        # Detect turn and get pose parameters accordingly
+        turning = self._detect_turn(mean_movement, point_count)
+        pose_params = self._get_pose_params(turning)
 
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
-                points3D,
-                points2D,
-                self.K,
-                None,
-                confidence=confidence,
-                reprojectionError=reproj_error,
+                points3D, points2D, self.K, None,
+                confidence=pose_params["confidence"],
+                reprojectionError=pose_params["reprojection_error"],
                 iterationsCount=1000,
                 flags=cv2.SOLVEPNP_P3P
             )
@@ -191,23 +176,18 @@ class ContinuousVO:
                 raise ValueError(
                     f"Pose estimation failed: {len(inliers) if inliers is not None else 0} inliers")
 
-            # Calculate error for monitoring
-            error = self.calculate_reprojection_error(
+            # Calculate Reprojectionerror for monitoring
+            error = self._calculate_reprojection_error(
                 points3D[inliers.flatten()],
                 points2D[inliers.flatten()],
                 rvec, tvec
             )
+
             print(f"Points: {point_count}, Inliers: {len(inliers)}, "
-                  f"Error: {error:.2f}, Movement: {mean_movement:.1f}, "
+                  f"Error: {round(error, 2)}, Movement: {round(mean_movement)}, "
                   f"Status: {'TURNING' if turning else 'STRAIGHT'}")
 
-            # Create pose matrix
-            R_mat = cv2.Rodrigues(rvec)[0]
-            pose = np.eye(4)
-            pose[:3, :3] = R_mat.T
-            pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
-
-            # Create inlier mask
+            pose = self._create_pose_matrix(rvec, tvec)
             inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
             inlier_mask[inliers.flatten()] = 1
 
@@ -216,26 +196,7 @@ class ContinuousVO:
         except cv2.error as e:
             raise ValueError(f"OpenCV error during pose estimation: {str(e)}")
 
-    def calculate_reprojection_error(self, points3D: np.ndarray, points2D: np.ndarray,
-                                     rvec: np.ndarray, tvec: np.ndarray) -> float:
-        """
-        Calculate the mean reprojection error for a set of points.
-
-        Args:
-            points3D (np.ndarray): 3D points in world coordinates (shape Nx3).
-            points2D (np.ndarray): 2D points in image coordinates (shape Nx2).
-            rvec (np.ndarray): Rotation vector.
-            tvec (np.ndarray): Translation vector.
-
-        Returns:
-            float: Mean reprojection error across all points.
-        """
-        projected_points, _ = cv2.projectPoints(
-            points3D, rvec, tvec, self.K, None)
-        errors = np.squeeze(projected_points) - points2D
-        return np.mean(np.sqrt(np.sum(errors**2, axis=1)))
-
-    def compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
+    def _compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
         """
         Compute the angle between bearing vectors from two camera positions to a 3D point.
 
@@ -272,9 +233,81 @@ class ContinuousVO:
 
         return float(angle)
 
-    def handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray,
-                          state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray,
-                          pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def _calculate_reprojection_error(self, points3D: np.ndarray, points2D: np.ndarray,
+                                      rvec: np.ndarray, tvec: np.ndarray) -> float:
+        """
+        Calculate the mean reprojection error for a set of points.
+
+        Args:
+            points3D (np.ndarray): 3D points in world coordinates.
+            points2D (np.ndarray): Corresponding 2D points in image coordinates.
+            rvec (np.ndarray): Rotation vector.
+            tvec (np.ndarray): Translation vector.
+
+        Returns:
+            float: Mean reprojection error.
+        """
+        projected_points, _ = cv2.projectPoints(
+            points3D, rvec, tvec, self.K, None)
+        projected_points = projected_points.reshape(-1, 2)
+
+        error = np.mean(np.linalg.norm(points2D - projected_points, axis=1))
+        return error
+
+    def _detect_turn(self, mean_movement: float, point_count: int) -> bool:
+        """
+        Detect if camera is turning based on point movement patterns.
+
+        Args:
+            points_movement (np.ndarray): Standard deviation of point movements.
+            mean_movement (float): Mean of point movements.
+            point_count (int): Number of tracked points.
+
+        Returns:
+            bool: True if camera is turning, False otherwise.
+        """
+        return (mean_movement < 70) or (point_count < 50 and mean_movement < 90)
+
+    def _get_pose_params(self, turning: bool) -> Dict[str, float]:
+        """
+        Get appropriate pose estimation parameters based on motion type.
+
+        Args:
+            turning (bool): True if camera is turning, False otherwise.
+
+        Returns:
+            Dict[str, float]: Dictionary containing pose estimation parameters.
+        """
+        if turning:
+            return {
+                "confidence": self.params["iterative_params"]["turning"]["confidence"],
+                "reprojection_error": self.params["iterative_params"]["turning"]["reprojection_error"]
+            }
+        return {
+            "confidence": self.params["iterative_params"]["straight"]["confidence"],
+            "reprojection_error": self.params["iterative_params"]["straight"]["reprojection_error"]
+        }
+
+    def _create_pose_matrix(self, rvec: np.ndarray, tvec: np.ndarray) -> np.ndarray:
+        """
+        Create 4x4 pose matrix from rotation and translation vectors.
+
+        Args:
+            rvec (np.ndarray): Rotation vector.
+            tvec (np.ndarray): Translation vector.
+
+        Returns:
+            np.ndarray: 4x4 pose matrix.
+        """
+        R_mat = cv2.Rodrigues(rvec)[0]
+        pose = np.eye(4)
+        pose[:3, :3] = R_mat.T
+        pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
+        return pose
+
+    def _handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray,
+                           state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray,
+                           pose: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Processes feature candidates between frames, updates candidate landmarks, and triangulates new 3D points.
 
@@ -303,13 +336,16 @@ class ContinuousVO:
         Ti = state_prev.cand_landmarks_transform
 
         # Detect new features in the current frame
-        # TODO: Use self.params instead of hardcoding the parameters
         features_current = cv2.goodFeaturesToTrack(
-            img_current, maxCorners=1000, qualityLevel=0.01, minDistance=10)
+            img_current,
+            maxCorners=self.feature_params.max_corners,
+            qualityLevel=self.feature_params.quality_level,
+            minDistance=self.feature_params.min_distance
+        )
         features_current = np.float32(features_current).reshape(-1, 2)
 
         # Track features from the previous frame
-        tracked_features, status, _ = self.track_keypoints(
+        tracked_features, status, _ = self._track_keypoints(
             Ci, img_prev, img_current)
         valid_idx = np.where(status == 1)[0]
 
@@ -393,7 +429,7 @@ class ContinuousVO:
                     continue
 
                 # Calculate the baseline angle
-                alpha = self.compute_baseline_angle(point3D, t_cur, t_idx)
+                alpha = self._compute_baseline_angle(point3D, t_cur, t_idx)
 
                 if abs(alpha) > np.deg2rad(Constants.THRESHOLD_CANDIDATES_ALPHA):
                     points3D = np.hstack([points3D, point3D])
