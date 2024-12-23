@@ -21,6 +21,7 @@ np.random.seed(SEED)
 
 cv2.setRNGSeed(SEED)
 
+
 @dataclass
 class Config:
     dataset: str
@@ -115,7 +116,8 @@ def main(ds: str) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="A script to demonstrate argparse.")
+    parser = argparse.ArgumentParser(
+        description="A script to demonstrate argparse.")
 
     # Add arguments
     parser.add_argument(
