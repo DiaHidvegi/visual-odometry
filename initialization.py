@@ -11,7 +11,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
-
 cv2.setRNGSeed(SEED)
 
 
@@ -24,7 +23,7 @@ class Initialization:
         self.imgs = [cv2.imread(img, cv2.IMREAD_GRAYSCALE) for img in imgs]
 
         # store camera intrinsics
-        self.K = K
+        self.K = K.astype(np.float32)
 
         # compute and store point correspondences
         self.points3D, self.points2D = self.get_features_and_k(
@@ -61,7 +60,7 @@ class Initialization:
             # Step 2.2: filter points that didn't move more pixels than a certain threshold (e.g. close to epipole)
             # distances = np.linalg.norm(good_new - good_old, axis=2)
             distances = np.sqrt(
-                np.sum((good_new - good_old)**2, axis=2)).flatten().astype(np.float32)
+                np.sum((good_new - good_old)**np.int64(2), axis=2)).flatten().astype(np.float32)
             drop = np.where(distances < params["dist_threshold_move"])
             good_old = np.delete(good_old, drop, axis=0)
             good_new = np.delete(good_new, drop, axis=0)
@@ -127,7 +126,8 @@ class Initialization:
         img_old = self.imgs[0].copy()
         for pt in self._plt_good_old:
             x, y = pt.ravel()
-            cv2.circle(img_old, (int(x), int(y)), 3, (255, 255, 125), -1)
+            cv2.circle(img_old, (np.int64(x), np.int64(y)),
+                       3, (255, 255, 125), -1)
 
         img_tracked = self.imgs[-1].copy()
         for pt_old, pt_new in zip(self._plt_good_old, self._plt_good_new):
@@ -135,12 +135,12 @@ class Initialization:
             x_new, y_new = pt_new.ravel()
 
             # Draw the current point in img_tracked
-            cv2.circle(img_tracked, (int(x_new), int(y_new)),
+            cv2.circle(img_tracked, (np.int64(x_new), np.int64(y_new)),
                        3, (255, 255, 125), -1)
 
             # Draw a line from the old position to the new position
-            cv2.line(img_tracked, (int(x_old), int(y_old)),
-                     (int(x_new), int(y_new)), (0, 255, 0), 1)
+            cv2.line(img_tracked, (np.int64(x_old), np.int64(y_old)),
+                     (np.int64(x_new), np.int64(y_new)), (0, 255, 0), 1)
 
         cv2.imshow("Initial Points", img_old)
         cv2.imshow("Tracked Points", img_tracked)
@@ -186,11 +186,36 @@ class Initialization:
         }
 
         params = {
-            "kitti":   {"maxCorners": 1000, "qualityLevel": np.float32(0.01), "minDistance": np.float32(10), "dist_threshold_move": np.float32(2), "winSize": (11, 11), "RANSAC_prob": np.float32(0.999), "RANSAC_threshold": np.float32(0.5), "repro_threshold": np.float32(3.0)},
-            "parking": {"maxCorners": 1000, "qualityLevel": np.float32(0.01), "minDistance": np.float32(10), "dist_threshold_move": np.float32(0), "winSize": (11, 11), "RANSAC_prob": np.float32(0.999), "RANSAC_threshold": np.float32(0.5), "repro_threshold": np.float32(1.0)},
-            "malaga":  {"maxCorners": 400, "qualityLevel": np.float32(0.01), "minDistance": np.float32(10), "dist_threshold_move": np.float32(0), "winSize": (41, 41), "RANSAC_prob": np.float32(0.999), "RANSAC_threshold": np.float32(1.5), "repro_threshold": np.float32(3.0)}
-            # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":5.0} # on 5 frames
-            # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":3.0} # on 5 frames
+            "kitti": {
+                "maxCorners": np.int64(1000),
+                "qualityLevel": np.float32(0.01),
+                "minDistance": np.float32(10),
+                "dist_threshold_move": np.float32(2),
+                "winSize": (np.int64(11), np.int64(11)),
+                "RANSAC_prob": np.float32(0.999),
+                "RANSAC_threshold": np.float32(0.5),
+                "repro_threshold": np.float32(3.0)
+            },
+            "parking": {
+                "maxCorners": np.int64(1000),
+                "qualityLevel": np.float32(0.01),
+                "minDistance": np.float32(10),
+                "dist_threshold_move": np.float32(0),
+                "winSize": (np.int64(11), np.int64(11)),
+                "RANSAC_prob": np.float32(0.999),
+                "RANSAC_threshold": np.float32(0.5),
+                "repro_threshold": np.float32(1.0)
+            },
+            "malaga": {
+                "maxCorners": np.int64(400),
+                "qualityLevel": np.float32(0.01),
+                "minDistance": np.float32(10),
+                "dist_threshold_move": np.float32(0),
+                "winSize": (np.int64(41), np.int64(41)),
+                "RANSAC_prob": np.float32(0.999),
+                "RANSAC_threshold": np.float32(1.5),
+                "repro_threshold": np.float32(3.0)
+            }
         }
         return K[dataset], params[dataset], imgs[dataset]
 

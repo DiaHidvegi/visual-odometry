@@ -16,7 +16,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
-
 cv2.setRNGSeed(SEED)
 
 
@@ -47,13 +46,13 @@ class ContinuousVO:
             K (np.ndarray): Intrinsic camera matrix.
             dataset (str): Dataset to use for training.
         """
-        self.K = K
+        self.K = K.astype(np.float32)
         self.dataset = dataset
         _, self.params, _ = get_k_params_imgs(dataset)
         self.tracking_params = TrackingParams(self.params["winSize"])
         self.feature_params = FeatureParams(
-            self.params["maxCorners"], 
-            self.params["qualityLevel"], 
+            self.params["maxCorners"],
+            self.params["qualityLevel"],
             self.params["minDistance"])
 
     def process_frame(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState) -> Tuple[FrameState, np.ndarray]:
@@ -397,17 +396,20 @@ class ContinuousVO:
             # Draw Ci (white)
             for pt in range(Ci.shape[1]):
                 x, y = Ci[0, pt], Ci[1, pt]
-                cv2.circle(img_now, (int(x), int(y)), 3, 255, -1)  # White
+                cv2.circle(img_now, (np.int64(x), np.int64(y)),
+                           3, 255, -1)  # White
 
             # Draw Pi (grey)
             for pt in range(Pi.shape[1]):
                 x, y = Pi[0, pt], Pi[1, pt]
-                cv2.circle(img_now, (int(x), int(y)), 3, 128, -1)  # Grey (128)
+                cv2.circle(img_now, (np.int64(x), np.int64(y)),
+                           3, 128, -1)  # Grey (128)
 
             # Draw new_features (black)
             for pt in range(new_features.shape[1]):
                 x, y = new_features[0, pt], new_features[1, pt]
-                cv2.circle(img_now, (int(x), int(y)), 3, 0, -1)  # Black
+                cv2.circle(img_now, (np.int64(x), np.int64(y)),
+                           3, 0, -1)  # Black
 
             # Display the image with the updated features
             cv2.imshow(
@@ -418,7 +420,7 @@ class ContinuousVO:
         t_cur = pose[:3, 3]
 
         distance_matrix = np.sqrt(
-            np.sum((Ci - Fi) ** 2, axis=0)).astype(np.float32)
+            np.sum((Ci - Fi) ** np.int64(2), axis=0)).astype(np.float32)
 
         new_landmarks = distance_matrix > Constants.THRESHOLD_PIXEL_DIST_TRIANGULATION
 

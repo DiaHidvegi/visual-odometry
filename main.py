@@ -18,7 +18,6 @@ import random
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
-
 cv2.setRNGSeed(SEED)
 
 
@@ -26,7 +25,7 @@ cv2.setRNGSeed(SEED)
 class Config:
     dataset: str
     max_frames: int = 1000
-    visualization_delay: float = 0.1
+    visualization_delay: float = 0
 
 
 class ImageLoader:
@@ -124,7 +123,7 @@ if __name__ == "__main__":
         "-d", "--dataset",
         type=str,
         required=False,
-        default="parking",
+        default="kitti",
         help="Name of the dataset (malaga, kitti, parking)"
     )
 

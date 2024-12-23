@@ -1,13 +1,20 @@
 import numpy as np
 import os
+import random
+import cv2
+# Set all seeds
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+cv2.setRNGSeed(SEED)
 
 
 class Constants:
-    THRESHOLD_NEW_KEYPOINTS = np.float32(15)
-    THRESHOLD_PIXEL_DIST_TRIANGULATION = np.float32(15)
-    THRESHOLD_PIXEL_DIST_CANDIDATES_MIN = np.float32(2)
-    THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = np.float32(100)
-    THRESHOLD_CANDIDATES_ALPHA = np.float32(1)
+    THRESHOLD_NEW_KEYPOINTS = np.int64(15)
+    THRESHOLD_PIXEL_DIST_TRIANGULATION = np.int64(15)
+    THRESHOLD_PIXEL_DIST_CANDIDATES_MIN = np.int64(2)
+    THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = np.int64(100)
+    THRESHOLD_CANDIDATES_ALPHA = np.int64(1)
 
 
 def get_k_params_imgs(dataset):
@@ -28,57 +35,57 @@ def get_k_params_imgs(dataset):
 
     params = {
         "kitti": {
-            "maxCorners": 2000,
-            "qualityLevel": 0.01,
-            "minDistance": 10,
-            "winSize": (21, 21),
+            "maxCorners": np.int64(2000),
+            "qualityLevel": np.float32(0.01),
+            "minDistance": np.float32(10),
+            "winSize": (np.int64(21), np.int64(21)),
             "iterative_params": {
                 "turning": {
-                    "confidence": 0.99,
-                    "reprojection_error": 2.5
+                    "confidence": np.float32(0.99),
+                    "reprojection_error": np.float32(2.5)
                 },
                 "straight": {
-                    "confidence": 0.99,
-                    "reprojection_error": 1.15
+                    "confidence": np.float32(0.99),
+                    "reprojection_error": np.float32(1.15)
                 }
             }
         },
         "parking": {
-            "maxCorners": 1000,
-            "qualityLevel": 0.01,
-            "minDistance": 10,
-            "dist_threshold_move": 0,
-            "winSize": (11, 11),
-            "RANSAC_threshold": 0.5,
-            "repro_threshold": 1.0,
+            "maxCorners": np.int64(1000),
+            "qualityLevel": np.float32(0.01),
+            "minDistance": np.float32(10),
+            "dist_threshold_move": np.int64(0),
+            "winSize": (np.int64(11), np.int64(11)),
+            "RANSAC_threshold": np.float32(0.5),
+            "repro_threshold": np.float32(1.0),
             "iterative_params": {
                 "turning": {
-                    "confidence": 0.99,
-                    "reprojection_error": 2.5
+                    "confidence": np.float32(0.99),
+                    "reprojection_error": np.float32(2.5)
                 },
                 "straight": {
-                    "confidence": 0.99,
-                    "reprojection_error": 1.15
+                    "confidence": np.float32(0.99),
+                    "reprojection_error": np.float32(1.15)
                 }
             }
         },
         "malaga": {
-            "maxCorners": 1000,
-            "qualityLevel": 0.01,
-            "minDistance": 10,
-            "dist_threshold_move": 5,
-            "winSize": (21, 21),
-            "RANSAC_prob": 0.999,
-            "RANSAC_threshold": 0.5,
-            "repro_threshold": 5.0,
+            "maxCorners": np.int64(1000),
+            "qualityLevel": np.float32(0.01),
+            "minDistance": np.float32(10),
+            "dist_threshold_move": np.int64(5),
+            "winSize": (np.int64(21), np.int64(21)),
+            "RANSAC_prob": np.float32(0.999),
+            "RANSAC_threshold": np.float32(0.5),
+            "repro_threshold": np.float32(5.0),
             "iterative_params": {
                 "turning": {
-                    "confidence": 0.99,
-                    "reprojection_error": 3.0
+                    "confidence": np.float32(0.99),
+                    "reprojection_error": np.float32(3.0)
                 },
                 "straight": {
-                    "confidence": 0.99,
-                    "reprojection_error": 1.7
+                    "confidence": np.float32(0.99),
+                    "reprojection_error": np.float32(1.7)
                 }
             }
         }
