@@ -39,7 +39,7 @@ def get_k_params_imgs(dataset):
                 },
                 "straight": {
                     "confidence": 0.99,
-                    "reprojection_error": 1.15
+                    "reprojection_error": 2.0
                 }
             }
         },

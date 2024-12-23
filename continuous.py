@@ -89,7 +89,7 @@ class ContinuousVO:
         Pi, Xi, Ci, Fi, Ti = self._handle_candidates(
             img_current, img_prev, state_prev, Pi, Xi, pose)
 
-        pose = pose[:3, :].reshape((1, -1))
+        pose = self.invert_transformation(pose).reshape((1, -1))
 
         return FrameState(
             landmarks_image=Pi,
@@ -316,9 +316,9 @@ class ContinuousVO:
         """
         R_mat = cv2.Rodrigues(rvec)[0]
         pose = np.eye(4)
-        pose[:3, :3] = R_mat.T
-        pose[:3, 3] = ((-R_mat.T)@tvec).flatten()
-        return pose
+        pose[:3, :3] = R_mat
+        pose[:3, 3] = tvec.flatten()
+        return pose[:3,:]
 
     def _handle_candidates(self, img_current: np.ndarray, img_prev: np.ndarray,
                            state_prev: FrameState, Pi: np.ndarray, Xi: np.ndarray,
@@ -415,7 +415,7 @@ class ContinuousVO:
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-        t_cur = pose[:3, 3]
+        t_cur = self.invert_transformation(pose)[:3,3]
 
         distance_matrix = np.sqrt(
             np.sum((Ci - Fi) ** 2, axis=0)).astype(np.float32)
@@ -430,14 +430,14 @@ class ContinuousVO:
                 # Triangulate new points
                 # Create projection matrices for the first and second views
                 Ti_idx_formatted = np.reshape(Ti[:, idx], (3, 4))
-                proj1 = self.K @ self.invert_transformation(Ti_idx_formatted)
-                proj2 = self.K @ self.invert_transformation(pose[:3, :])
+                proj1 = self.K @ Ti_idx_formatted
+                proj2 = self.K @ pose
 
                 point4D_hom = cv2.triangulatePoints(
                     proj1, proj2, Fi[:, idx], Ci[:, idx])
                 point3D = point4D_hom[:3] / point4D_hom[3]
 
-                t_idx = Ti_idx_formatted[:3, 3]
+                t_idx = self.invert_transformation(Ti_idx_formatted)[:3,3]
 
                 # Check for negative depth
                 if point3D[2] < -t_idx[2]:
@@ -462,7 +462,7 @@ class ContinuousVO:
 
         # Add new features to Ci, Fi, Ti
         if new_features.size > 0:
-            pose = pose[:3, :].reshape((-1, 1))
+            pose = pose.reshape((-1, 1))
             tiled_pose = np.tile(pose, (1, new_features.shape[1]))
             Ci = np.hstack([Ci, new_features])
             Fi = np.hstack([Fi, new_features])
