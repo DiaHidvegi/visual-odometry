@@ -112,10 +112,10 @@ class ContinuousVO:
                 - Error array for each tracked point.
         """
         if prev_keypoints.size == 0:
-            return np.empty((2, 0)), np.empty((0,), dtype=np.uint8), np.empty((0,), dtype=np.float32)
+            return np.empty((2, 0)), np.empty((0,), dtype=np.uint8), np.empty((0,), dtype=np.float64)
 
         prev_keypoints_cv = prev_keypoints.T.reshape(
-            -1, 1, 2).astype(np.float32)
+            -1, 1, 2).astype(np.float64)
 
         lk_params = dict(
             winSize=self.tracking_params.win_size,
@@ -234,12 +234,13 @@ class ContinuousVO:
         v_cur = point3D - t_cur
         v_first = point3D - t_first
 
-        v_cur = v_cur / np.linalg.norm(v_cur)
-        v_first = v_first / np.linalg.norm(v_first)
+        v_cur = v_cur / np.linalg.norm(v_cur).astype(np.float64)
+        v_first = v_first / np.linalg.norm(v_first).astype(np.float64)
 
         # Compute angle between vectors
-        cos_angle = np.clip(np.dot(v_cur, v_first), -1.0, 1.0)
-        angle = np.arccos(cos_angle)
+        cos_angle = np.clip(np.dot(v_cur, v_first), -
+                            1.0, 1.0).astype(np.float64)
+        angle = np.arccos(cos_angle).astype(np.float64)
 
         return float(angle)
 
@@ -261,7 +262,8 @@ class ContinuousVO:
             points3D, rvec, tvec, self.K, None)
         projected_points = projected_points.reshape(-1, 2)
 
-        error = np.mean(np.linalg.norm(points2D - projected_points, axis=1))
+        error = np.mean(np.linalg.norm(
+            points2D - projected_points, axis=1)).astype(np.float64)
         return error
 
     def _detect_turn(self, mean_movement: float, point_count: int) -> bool:
@@ -352,7 +354,7 @@ class ContinuousVO:
             qualityLevel=self.feature_params.quality_level,
             minDistance=self.feature_params.min_distance
         )
-        features_current = np.float32(features_current).reshape(-1, 2)
+        features_current = np.float64(features_current).reshape(-1, 2)
 
         # Track features from the previous frame
         tracked_features, status, _ = self._track_keypoints(
@@ -365,7 +367,7 @@ class ContinuousVO:
         Ti = Ti[:, valid_idx]
 
         # Filter points that didn't move more pixels than a certain threshold (e.g. close to epipole)
-        distances = np.sqrt(np.sum((Ci - Fi) ** 2, axis=0))
+        distances = np.sqrt(np.sum((Ci - Fi) ** 2, axis=0)).astype(np.float64)
         good_candidates = (distances > Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MIN) & (
             distances < Constants.THRESHOLD_PIXEL_DIST_CANDIDATES_MAX)
 
@@ -378,7 +380,7 @@ class ContinuousVO:
 
         # Compute pairwise distances and filter out duplicates
         distance_matrix = cdist(features_current, existing_features)
-        min_distances = np.min(distance_matrix, axis=1)
+        min_distances = np.min(distance_matrix, axis=1).astype(np.float64)
         new_feature_mask = min_distances > Constants.THRESHOLD_NEW_KEYPOINTS
 
         # Filter out new features
@@ -412,7 +414,8 @@ class ContinuousVO:
 
         t_cur = pose[:3, 3]
 
-        distance_matrix = np.sqrt(np.sum((Ci - Fi) ** 2, axis=0))
+        distance_matrix = np.sqrt(
+            np.sum((Ci - Fi) ** 2, axis=0)).astype(np.float64)
 
         new_landmarks = distance_matrix > Constants.THRESHOLD_PIXEL_DIST_TRIANGULATION
 
@@ -439,7 +442,8 @@ class ContinuousVO:
                     continue
 
                 # Calculate the baseline angle
-                alpha = self._compute_baseline_angle(point3D, t_cur, t_idx)
+                alpha = self._compute_baseline_angle(
+                    point3D, t_cur, t_idx).astype(np.float64)
 
                 if abs(alpha) > np.deg2rad(Constants.THRESHOLD_CANDIDATES_ALPHA):
                     points3D = np.hstack([points3D, point3D])
