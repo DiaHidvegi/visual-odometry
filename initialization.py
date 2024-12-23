@@ -47,7 +47,6 @@ class Initialization:
         # Step 2: Track keypoints, remove far-away features + outliers, estimate essential matrix
         for i in range(len(imgs)-1):
             # Step 2.1: Track keypoints from first to last image using optical flow
-            # Note: maxLevel=0 reduces quality but makes sure that no pyramids are used (not implemented in exercise)
             lk_params = dict(winSize=params["winSize"], maxLevel=0, criteria=(
                 cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01))
             tracked_points, status, _ = cv2.calcOpticalFlowPyrLK(
@@ -188,8 +187,6 @@ class Initialization:
             "kitti":   {"maxCorners": 1000, "qualityLevel": 0.01, "minDistance": 10, "dist_threshold_move": 2, "winSize": (11, 11), "RANSAC_prob": 0.999, "RANSAC_threshold": 0.5, "repro_threshold": 3.0},
             "parking": {"maxCorners": 1000, "qualityLevel": 0.01, "minDistance": 10, "dist_threshold_move": 0, "winSize": (11, 11), "RANSAC_prob": 0.999, "RANSAC_threshold": 0.5, "repro_threshold": 1.0},
             "malaga":  {"maxCorners": 400, "qualityLevel": 0.01, "minDistance": 10, "dist_threshold_move": 0, "winSize": (41, 41), "RANSAC_prob": 0.999, "RANSAC_threshold": 1.5, "repro_threshold": 3.0}
-            # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":5.0} # on 5 frames
-            # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":3.0} # on 5 frames
         }
         return K[dataset], params[dataset], imgs[dataset]
 
