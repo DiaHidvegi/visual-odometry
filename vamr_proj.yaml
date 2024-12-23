@@ -23,11 +23,7 @@ dependencies:
   - krb5=1.21.3
   - libblas=3.9.0
   - libcblas=3.9.0
-  - libcxx=19.1.5
-  - libedit=3.1.20191231
   - libffi=3.4.2
-  - libgfortran=5.0.0
-  - libgfortran5=13.2.0
   - liblapack=3.9.0
   - liblzma=5.6.3
   - liblzma-devel=5.6.3
@@ -37,7 +33,6 @@ dependencies:
   - libzlib=1.3.1
   - llvm-openmp=19.1.5
   - matplotlib-inline=0.1.7
-  - ncurses=6.5
   - nest-asyncio=1.6.0
   - numpy=2.2.0
   - openssl=3.4.0
@@ -56,7 +51,6 @@ dependencies:
   - python-dateutil=2.9.0.post0
   - python_abi=3.10
   - pyzmq=26.2.0
-  - readline=8.2
   - scipy=1.14.1
   - setuptools=75.6.0
   - six=1.17.0
@@ -70,7 +64,6 @@ dependencies:
   - wcwidth=0.2.13
   - wheel=0.45.1
   - xz=5.6.3
-  - xz-gpl-tools=5.6.3
   - xz-tools=5.6.3
   - zeromq=4.3.5
   - zipp=3.21.0
