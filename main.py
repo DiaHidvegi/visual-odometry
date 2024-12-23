@@ -25,7 +25,16 @@ cv2.setRNGSeed(SEED)
 class Config:
     dataset: str
     max_frames: int = 1000
-    visualization_delay: float = 0.1
+    visualization_delay: float = 0
+
+    def __post_init__(self):
+        # set number of frames depending on the dataset
+        if self.dataset == "parking":
+            self.max_frames = 599
+        elif self.dataset == "kitti":
+            self.max_frames = 2761
+        elif self.dataset == "malaga":
+            self.max_frames = 2121
 
 
 class ImageLoader:
