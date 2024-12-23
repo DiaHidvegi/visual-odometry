@@ -62,37 +62,37 @@ data/
 
 ## Running the Pipeline
 
-1. Select which dataset to run by modifying the `config` variable in `main.py`:
+Decide which dataset you want the pipeline to run on and execute the following command in a terminal where the ```vamr_proj``` conda environment is active:
 
-```python
-# Configuration
-config = Config(
-    dataset="kitti",  # Options: "kitti", "parking", "malaga"
-    max_frames=1000,  # Maximum number of frames to process
-    visualization_delay=0.1  # Delay between frames (seconds)
-)
+```bash
+python main.py --dataset DATASET
 ```
 
-2. Run the pipeline:
+Therein, ```DATASET``` can take one of three values, depending which dataset you want to run:
+* ```parking```: To run the Parking dataset.
+* ```kitti```: To run the KITTI dataset.
+* ```malaga```: To run the Malaga dataset.
+
+If no value is set for the ```--dataset``` argument, ```parking``` is chosen as default. Example command to run the pipeline on the KITTI dataset:
 ```bash
-python main.py
+python main.py --dataset kitti
 ```
 
 ## Visualization
 
 The pipeline provides real-time visualization with four panels:
-- Current frame with candidate and tracked features
-- Number of candidate and tracked landmarks over time
-- Global trajectory
-- Local trajectory with visible landmarks
+- Current frame with candidate and tracked landmarks.
+- Number of candidate and tracked landmarks over time.
+- Global trajectory.
+- Local trajectory with visible landmarks.
 
 ## Troubleshooting
 
 If you encounter any issues:
-1. Verify that the dataset paths match the expected structure
-2. Check that the conda environment was created and activated correctly
-3. Ensure the selected dataset exists in the `data` directory
-4. Verify that the images are in the correct format (PNG for KITTI/Parking, JPG for Malaga)
+1. Verify that the dataset paths match the expected structure.
+2. Check that the conda environment was created and activated properly.
+3. Ensure the selected dataset exists in the `data` directory.
+4. Verify that the images are in the correct format (PNG for KITTI/Parking, JPG for Malaga).
 
 ## Authors
 
