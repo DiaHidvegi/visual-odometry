@@ -41,8 +41,8 @@ class Initialization:
         # Step 1: Detect keypoints in the first image using Shi-Tomasi corner detector
         corners = cv2.goodFeaturesToTrack(
             imgs[0], maxCorners=params["maxCorners"], qualityLevel=params["qualityLevel"], minDistance=params["minDistance"]
-        ).astype(np.float64)
-        good_old = np.float64(corners).reshape(-1, 1, 2)
+        ).astype(np.float32)
+        good_old = np.float32(corners).reshape(-1, 1, 2)
         good_new = good_old
 
         # Step 2: Track keypoints, remove far-away features + outliers, estimate essential matrix
@@ -61,7 +61,7 @@ class Initialization:
             # Step 2.2: filter points that didn't move more pixels than a certain threshold (e.g. close to epipole)
             # distances = np.linalg.norm(good_new - good_old, axis=2)
             distances = np.sqrt(
-                np.sum((good_new - good_old)**2, axis=2)).flatten().astype(np.float64)
+                np.sum((good_new - good_old)**2, axis=2)).flatten().astype(np.float32)
             drop = np.where(distances < params["dist_threshold_move"])
             good_old = np.delete(good_old, drop, axis=0)
             good_new = np.delete(good_new, drop, axis=0)
@@ -173,9 +173,9 @@ class Initialization:
         assert dataset in [
             "kitti", "parking", "malaga"], f'dataset should be in "kitti","parking","malaga", got: {dataset}'
         K = {
-            "kitti": np.array([[707.09,  0, 601.88], [0, 707.09, 183.11], [0,  0,  1]], dtype=np.float64),
-            "parking": np.array([[331.37,  0, 320], [0, 369.568, 240], [0,  0,  1]], dtype=np.float64),
-            "malaga": np.array([[621.184287,  0, 404.00760], [0, 621.18428, 309.05989], [0,  0,  1]], dtype=np.float64)
+            "kitti": np.array([[707.09,  0, 601.88], [0, 707.09, 183.11], [0,  0,  1]], dtype=np.float32),
+            "parking": np.array([[331.37,  0, 320], [0, 369.568, 240], [0,  0,  1]], dtype=np.float32),
+            "malaga": np.array([[621.184287,  0, 404.00760], [0, 621.18428, 309.05989], [0,  0,  1]], dtype=np.float32)
         }
 
         malaga_base_path = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
@@ -186,9 +186,9 @@ class Initialization:
         }
 
         params = {
-            "kitti":   {"maxCorners": 1000, "qualityLevel": np.float64(0.01), "minDistance": np.float64(10), "dist_threshold_move": np.float64(2), "winSize": (11, 11), "RANSAC_prob": np.float64(0.999), "RANSAC_threshold": np.float64(0.5), "repro_threshold": np.float64(3.0)},
-            "parking": {"maxCorners": 1000, "qualityLevel": np.float64(0.01), "minDistance": np.float64(10), "dist_threshold_move": np.float64(0), "winSize": (11, 11), "RANSAC_prob": np.float64(0.999), "RANSAC_threshold": np.float64(0.5), "repro_threshold": np.float64(1.0)},
-            "malaga":  {"maxCorners": 400, "qualityLevel": np.float64(0.01), "minDistance": np.float64(10), "dist_threshold_move": np.float64(0), "winSize": (41, 41), "RANSAC_prob": np.float64(0.999), "RANSAC_threshold": np.float64(1.5), "repro_threshold": np.float64(3.0)}
+            "kitti":   {"maxCorners": 1000, "qualityLevel": np.float32(0.01), "minDistance": np.float32(10), "dist_threshold_move": np.float32(2), "winSize": (11, 11), "RANSAC_prob": np.float32(0.999), "RANSAC_threshold": np.float32(0.5), "repro_threshold": np.float32(3.0)},
+            "parking": {"maxCorners": 1000, "qualityLevel": np.float32(0.01), "minDistance": np.float32(10), "dist_threshold_move": np.float32(0), "winSize": (11, 11), "RANSAC_prob": np.float32(0.999), "RANSAC_threshold": np.float32(0.5), "repro_threshold": np.float32(1.0)},
+            "malaga":  {"maxCorners": 400, "qualityLevel": np.float32(0.01), "minDistance": np.float32(10), "dist_threshold_move": np.float32(0), "winSize": (41, 41), "RANSAC_prob": np.float32(0.999), "RANSAC_threshold": np.float32(1.5), "repro_threshold": np.float32(3.0)}
             # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":5.0} # on 5 frames
             # "malaga":  {"maxCorners": 400, "qualityLevel":0.01, "minDistance":10, "dist_threshold_move":0, "winSize":(41, 41), "RANSAC_prob":0.999, "RANSAC_threshold":1.5, "repro_threshold":3.0} # on 5 frames
         }

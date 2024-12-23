@@ -3,20 +3,20 @@ import os
 
 
 class Constants:
-    THRESHOLD_NEW_KEYPOINTS = np.float64(15)
-    THRESHOLD_PIXEL_DIST_TRIANGULATION = np.float64(15)
-    THRESHOLD_PIXEL_DIST_CANDIDATES_MIN = np.float64(2)
-    THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = np.float64(100)
-    THRESHOLD_CANDIDATES_ALPHA = np.float64(1)
+    THRESHOLD_NEW_KEYPOINTS = np.float32(15)
+    THRESHOLD_PIXEL_DIST_TRIANGULATION = np.float32(15)
+    THRESHOLD_PIXEL_DIST_CANDIDATES_MIN = np.float32(2)
+    THRESHOLD_PIXEL_DIST_CANDIDATES_MAX = np.float32(100)
+    THRESHOLD_CANDIDATES_ALPHA = np.float32(1)
 
 
 def get_k_params_imgs(dataset):
     assert dataset in ["kitti", "parking",
                        "malaga"], f'dataset should be in "kitti","parking","malaga", got: {dataset}'
     K = {
-        "kitti": np.array([[707.09,  0, 601.88], [0, 707.09, 183.11], [0,  0,  1]], dtype=np.float64),
-        "parking": np.array([[331.37,  0, 320], [0, 369.568, 240], [0,  0,  1]], dtype=np.float64),
-        "malaga": np.array([[621.184287,  0, 404.00760], [0, 621.18428, 309.05989], [0,  0,  1]], dtype=np.float64)
+        "kitti": np.array([[707.09,  0, 601.88], [0, 707.09, 183.11], [0,  0,  1]], dtype=np.float32),
+        "parking": np.array([[331.37,  0, 320], [0, 369.568, 240], [0,  0,  1]], dtype=np.float32),
+        "malaga": np.array([[621.184287,  0, 404.00760], [0, 621.18428, 309.05989], [0,  0,  1]], dtype=np.float32)
     }
 
     malaga_base_path = "data/malaga/malaga-urban-dataset-extract-07_rectified_800x600_Images/"
