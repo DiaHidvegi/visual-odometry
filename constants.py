@@ -67,7 +67,7 @@ def get_k_params_imgs(dataset):
             "qualityLevel": 0.01,
             "minDistance": 10,
             "dist_threshold_move": 5,
-            "winSize": (31, 31),
+            "winSize": (21, 21),
             "RANSAC_prob": 0.999,
             "RANSAC_threshold": 0.5,
             "repro_threshold": 5.0,

@@ -50,8 +50,11 @@ class ContinuousVO:
         self.K = K
         self.dataset = dataset
         _, self.params, _ = get_k_params_imgs(dataset)
-        self.tracking_params = TrackingParams()
-        self.feature_params = FeatureParams()
+        self.tracking_params = TrackingParams(self.params["winSize"])
+        self.feature_params = FeatureParams(
+            self.params["maxCorners"], 
+            self.params["qualityLevel"], 
+            self.params["minDistance"])
 
     def process_frame(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState) -> Tuple[FrameState, np.ndarray]:
         """
