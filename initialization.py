@@ -11,7 +11,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
-
 cv2.setRNGSeed(SEED)
 
 

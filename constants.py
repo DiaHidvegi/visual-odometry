@@ -28,7 +28,7 @@ def get_k_params_imgs(dataset):
 
     params = {
         "kitti": {
-            "maxCorners": 2000,
+            "maxCorners": 1000,
             "qualityLevel": 0.01,
             "minDistance": 10,
             "winSize": (21, 21),
@@ -58,7 +58,7 @@ def get_k_params_imgs(dataset):
                 },
                 "straight": {
                     "confidence": 0.99,
-                    "reprojection_error": 1.15
+                    "reprojection_error": 0.7
                 }
             }
         },
@@ -78,7 +78,7 @@ def get_k_params_imgs(dataset):
                 },
                 "straight": {
                     "confidence": 0.99,
-                    "reprojection_error": 1.7
+                    "reprojection_error": 1.5
                 }
             }
         }

@@ -18,14 +18,14 @@ import random
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
-
 cv2.setRNGSeed(SEED)
+
 
 @dataclass
 class Config:
     dataset: str
     max_frames: int = 1000
-    visualization_delay: float = 0
+    visualization_delay: float = 0.01
 
     def __post_init__(self):
         # set number of frames depending on the dataset
@@ -124,14 +124,15 @@ def main(ds: str) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="A script to demonstrate argparse.")
+    parser = argparse.ArgumentParser(
+        description="A script to demonstrate argparse.")
 
     # Add arguments
     parser.add_argument(
         "-d", "--dataset",
         type=str,
         required=False,
-        default="parking",
+        default="kitti",
         help="Name of the dataset (malaga, kitti, parking)"
     )
 

@@ -16,7 +16,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
-
 cv2.setRNGSeed(SEED)
 
 
@@ -35,7 +34,7 @@ class FeatureParams:
     """Parameters for feature detection"""
     max_corners: int = 1000
     quality_level: float = 0.01
-    min_distance: float = 10.0
+    min_distance: float = 10
 
 
 class ContinuousVO:
@@ -52,9 +51,11 @@ class ContinuousVO:
         _, self.params, _ = get_k_params_imgs(dataset)
         self.tracking_params = TrackingParams(self.params["winSize"])
         self.feature_params = FeatureParams(
-            self.params["maxCorners"], 
-            self.params["qualityLevel"], 
+            self.params["maxCorners"],
+            self.params["qualityLevel"],
             self.params["minDistance"])
+
+        print(self.tracking_params.max_level)
 
     def process_frame(self, img_current: np.ndarray, img_prev: np.ndarray, state_prev: FrameState) -> Tuple[FrameState, np.ndarray]:
         """
