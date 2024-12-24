@@ -37,6 +37,14 @@ class FeatureParams:
     min_distance: float = 10
 
 
+@dataclass
+class PoseRefinementParams:
+    """Parameters for pose refinement"""
+    max_iterations: int = 20
+    epsilon: float = 1e-6
+    VVSlambda: float = 1.0
+
+
 class ContinuousVO:
     def __init__(self, K: np.ndarray, dataset: str):
         """
@@ -54,6 +62,11 @@ class ContinuousVO:
             self.params["maxCorners"],
             self.params["qualityLevel"],
             self.params["minDistance"])
+        self.refinement_params = PoseRefinementParams(
+            max_iterations=self.params["refinement_max_iterations"],
+            epsilon=self.params["refinement_epsilon"],
+            VVSlambda=self.params["refinement_VVSlambda"]
+        )
 
         print(self.tracking_params.max_level)
 
@@ -175,7 +188,7 @@ class ContinuousVO:
 
         # Detect turn and get pose parameters accordingly
         turning = self._detect_turn(mean_movement, point_count)
-        pose_params = self._get_pose_params(turning)
+        pose_params = self._get_pose_params(True)
 
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
@@ -190,6 +203,13 @@ class ContinuousVO:
                 raise ValueError(
                     f"Pose estimation failed: {len(inliers) if inliers is not None else 0} inliers")
 
+            # Refine pose using Gauss-Newton optimization
+            rvec, tvec = self._refine_pose(
+                points3D[inliers.flatten()],
+                points2D[inliers.flatten()],
+                rvec, tvec
+            )
+
             # Calculate Reprojectionerror for monitoring
             error = self._calculate_reprojection_error(
                 points3D[inliers.flatten()],
@@ -197,8 +217,9 @@ class ContinuousVO:
                 rvec, tvec
             )
 
-            print(f"Points: {point_count}, Inliers: {len(inliers)}, "
-                  f"Error: {round(error, 2)}, Movement: {round(mean_movement)}, "
+            print(f"Point/Movement: {(point_count/mean_movement):.4f}, Points: {point_count}, Movement: {mean_movement:.2f}, "
+                  f"Inliers: {len(inliers)}, "
+                  f"Reprojection Error: {error:.2f}, "
                   f"Status: {'TURNING' if turning else 'STRAIGHT'}")
 
             pose = self._create_pose_matrix(rvec, tvec)
@@ -209,6 +230,58 @@ class ContinuousVO:
 
         except cv2.error as e:
             raise ValueError(f"OpenCV error during pose estimation: {str(e)}")
+
+    def _refine_pose(self, points3D: np.ndarray, points2D: np.ndarray,
+                     rvec: np.ndarray, tvec: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Refine pose estimation using Virtual Visual Servoing.
+
+        Args:
+            points3D: 3D points in world coordinates (Nx3)
+            points2D: 2D points in image coordinates (Nx2)
+            rvec: Initial rotation vector
+            tvec: Initial translation vector
+
+        Returns:
+            Tuple of refined rotation vector and translation vector
+        """
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT,
+                    self.refinement_params.max_iterations,
+                    self.refinement_params.epsilon)
+
+        try:
+            # Calculate initial reprojection error
+            initial_error = self._calculate_reprojection_error(
+                points3D, points2D, rvec, tvec)
+
+            # Try refinement
+            refined_rvec, refined_tvec = cv2.solvePnPRefineVVS(
+                points3D,
+                points2D,
+                self.K,
+                None,  # No distortion coefficients
+                rvec,
+                tvec,
+                criteria,
+                VVSlambda=self.refinement_params.VVSlambda
+            )
+
+            # Calculate refined reprojection error
+            refined_error = self._calculate_reprojection_error(
+                points3D, points2D, refined_rvec, refined_tvec)
+
+            # Use refined pose only if it improves the error
+            if refined_error < initial_error:
+                print("Refined pose is better")
+                return refined_rvec, refined_tvec
+            else:
+                print(
+                    f"VVS refinement increased error ({round(initial_error, 6)} -> {round(refined_error, 6)}, keeping original pose")
+                return rvec, tvec
+
+        except Exception as e:
+            print(f"VVS refinement failed: {str(e)}")
+            return rvec, tvec
 
     def _compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
         """
@@ -280,7 +353,7 @@ class ContinuousVO:
         Returns:
             bool: True if camera is turning, False otherwise.
         """
-        return (mean_movement < 70) or (point_count < 50 and mean_movement < 90)
+        return (mean_movement < 70) or (point_count < 50 and mean_movement < 70)
 
     def _get_pose_params(self, turning: bool) -> Dict[str, float]:
         """
