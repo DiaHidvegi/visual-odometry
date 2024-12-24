@@ -43,9 +43,9 @@ def get_k_params_imgs(dataset):
                     "reprojection_error": 1.15
                 }
             },
-            "refinement_max_iterations": 20,
-            "refinement_epsilon": 1e-6,
-            "refinement_VVSlambda": 1.15215,
+            "refinement_max_iterations": 10,
+            "refinement_epsilon": 1e-5,
+            "refinement_VVSlambda": 0.5,
         },
         "parking": {
             "maxCorners": 1000,
