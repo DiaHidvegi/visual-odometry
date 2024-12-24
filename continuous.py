@@ -37,6 +37,14 @@ class FeatureParams:
     min_distance: float = 10
 
 
+@dataclass
+class PoseRefinementParams:
+    """Parameters for pose refinement"""
+    max_iterations: int = 20
+    epsilon: float = 1e-6
+    VVSlambda: float = 1.0
+
+
 class ContinuousVO:
     def __init__(self, K: np.ndarray, dataset: str):
         """
@@ -54,6 +62,11 @@ class ContinuousVO:
             self.params["maxCorners"],
             self.params["qualityLevel"],
             self.params["minDistance"])
+        self.refinement_params = PoseRefinementParams(
+            max_iterations=self.params["refinement_max_iterations"],
+            epsilon=self.params["refinement_epsilon"],
+            VVSlambda=self.params["refinement_VVSlambda"]
+        )
 
         print(self.tracking_params.max_level)
 
@@ -232,7 +245,9 @@ class ContinuousVO:
         Returns:
             Tuple of refined rotation vector and translation vector
         """
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 20, 1e-6)
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT,
+                    self.refinement_params.max_iterations,
+                    self.refinement_params.epsilon)
 
         try:
             # Calculate initial reprojection error
@@ -248,7 +263,7 @@ class ContinuousVO:
                 rvec,
                 tvec,
                 criteria,
-                VVSlambda=1.152155  # 1.15216
+                VVSlambda=self.refinement_params.VVSlambda
             )
 
             # Calculate refined reprojection error

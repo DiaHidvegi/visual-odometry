@@ -135,7 +135,7 @@ if __name__ == "__main__":
         "-d", "--dataset",
         type=str,
         required=False,
-        default="parking",
+        default="malaga",
         help="Name of the dataset (malaga, kitti, parking)"
     )
 

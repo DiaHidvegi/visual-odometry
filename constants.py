@@ -42,7 +42,10 @@ def get_k_params_imgs(dataset):
                     "confidence": 0.99,
                     "reprojection_error": 1.15
                 }
-            }
+            },
+            "refinement_max_iterations": 20,
+            "refinement_epsilon": 1e-6,
+            "refinement_VVSlambda": 1.15215,
         },
         "parking": {
             "maxCorners": 1000,
@@ -50,7 +53,6 @@ def get_k_params_imgs(dataset):
             "minDistance": 10,
             "dist_threshold_move": 0,
             "winSize": (11, 11),
-            "VVSlambda": 1.15215,
             "RANSAC_threshold": 0.5,
             "repro_threshold": 1.0,
             "iterative_params": {
@@ -62,7 +64,10 @@ def get_k_params_imgs(dataset):
                     "confidence": 0.995,
                     "reprojection_error": 0.34
                 }
-            }
+            },
+            "refinement_max_iterations": 20,
+            "refinement_epsilon": 1e-6,
+            "refinement_VVSlambda": 1.15215,
         },
         "malaga": {
             "maxCorners": 1000,
@@ -82,7 +87,10 @@ def get_k_params_imgs(dataset):
                     "confidence": 0.99,
                     "reprojection_error": 1.5
                 }
-            }
+            },
+            "refinement_max_iterations": 5,
+            "refinement_epsilon": 1e-6,
+            "refinement_VVSlambda": 0.7,
         }
     }
     return K[dataset], params[dataset], imgs[dataset]
