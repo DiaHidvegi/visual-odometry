@@ -181,20 +181,11 @@ class ContinuousVO:
         if points2D.shape[0] < 6:
             raise ValueError(f"Too few input points: {points2D.shape[0]}")
 
-        # Calculate movement of points
-        points_movement = np.std(points2D, axis=0)
-        mean_movement = np.mean(points_movement)
-        point_count = points2D.shape[0]
-
-        # Detect turn and get pose parameters accordingly
-        turning = self._detect_turn(mean_movement, point_count)
-        pose_params = self._get_pose_params(True)
-
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
                 points3D, points2D, self.K, None,
-                confidence=pose_params["confidence"],
-                reprojectionError=pose_params["reprojection_error"],
+                confidence=self.params["pose"]["confidence"],
+                reprojectionError=self.params["pose"]["reprojection_error"],
                 iterationsCount=1000,
                 flags=cv2.SOLVEPNP_P3P
             )
@@ -217,10 +208,7 @@ class ContinuousVO:
                 rvec, tvec
             )
 
-            print(f"Point/Movement: {(point_count/mean_movement):.4f}, Points: {point_count}, Movement: {mean_movement:.2f}, "
-                  f"Inliers: {len(inliers)}, "
-                  f"Reprojection Error: {error:.2f}, "
-                  f"Status: {'TURNING' if turning else 'STRAIGHT'}")
+            print(f"Reprojection Error: {error:.2f}")
 
             pose = self._create_pose_matrix(rvec, tvec)
             inlier_mask = np.zeros(points2D.shape[0], dtype=np.uint8)
@@ -340,40 +328,6 @@ class ContinuousVO:
 
         error = np.mean(np.linalg.norm(points2D - projected_points, axis=1))
         return error
-
-    def _detect_turn(self, mean_movement: float, point_count: int) -> bool:
-        """
-        Detect if camera is turning based on point movement patterns.
-
-        Args:
-            points_movement (np.ndarray): Standard deviation of point movements.
-            mean_movement (float): Mean of point movements.
-            point_count (int): Number of tracked points.
-
-        Returns:
-            bool: True if camera is turning, False otherwise.
-        """
-        return (mean_movement < 70) or (point_count < 50 and mean_movement < 70)
-
-    def _get_pose_params(self, turning: bool) -> Dict[str, float]:
-        """
-        Get appropriate pose estimation parameters based on motion type.
-
-        Args:
-            turning (bool): True if camera is turning, False otherwise.
-
-        Returns:
-            Dict[str, float]: Dictionary containing pose estimation parameters.
-        """
-        if turning:
-            return {
-                "confidence": self.params["iterative_params"]["turning"]["confidence"],
-                "reprojection_error": self.params["iterative_params"]["turning"]["reprojection_error"]
-            }
-        return {
-            "confidence": self.params["iterative_params"]["straight"]["confidence"],
-            "reprojection_error": self.params["iterative_params"]["straight"]["reprojection_error"]
-        }
 
     def _create_pose_matrix(self, rvec: np.ndarray, tvec: np.ndarray) -> np.ndarray:
         """

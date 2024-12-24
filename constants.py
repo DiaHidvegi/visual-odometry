@@ -33,15 +33,9 @@ def get_k_params_imgs(dataset):
             "minDistance": 10,
             "winSize": (21, 21),
             "VVSlambda": 1.15215,
-            "iterative_params": {
-                "turning": {
-                    "confidence": 0.99,
-                    "reprojection_error": 2.5
-                },
-                "straight": {
-                    "confidence": 0.99,
-                    "reprojection_error": 0.8
-                }
+            "pose": {
+                "confidence": 0.99,
+                "reprojection_error": 0.8
             },
             "refinement_max_iterations": 5,
             "refinement_epsilon": 1e-5,
@@ -55,15 +49,9 @@ def get_k_params_imgs(dataset):
             "winSize": (11, 11),
             "RANSAC_threshold": 0.5,
             "repro_threshold": 1.0,
-            "iterative_params": {
-                "turning": {
-                    "confidence": 0.99,
-                    "reprojection_error": 2.5
-                },
-                "straight": {
-                    "confidence": 0.995,
-                    "reprojection_error": 0.34
-                }
+            "pose": {
+                "confidence": 0.995,
+                "reprojection_error": 0.34
             },
             "refinement_max_iterations": 20,
             "refinement_epsilon": 1e-6,
@@ -78,15 +66,9 @@ def get_k_params_imgs(dataset):
             "RANSAC_prob": 0.999,
             "RANSAC_threshold": 0.5,
             "repro_threshold": 5.0,
-            "iterative_params": {
-                "turning": {
-                    "confidence": 0.99,
-                    "reprojection_error": 3.0
-                },
-                "straight": {
-                    "confidence": 0.99,
-                    "reprojection_error": 1.5
-                }
+            "pose": {
+                "confidence": 0.99,
+                "reprojection_error": 1.5
             },
             "refinement_max_iterations": 5,
             "refinement_epsilon": 1e-6,
