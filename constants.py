@@ -32,6 +32,7 @@ def get_k_params_imgs(dataset):
             "qualityLevel": 0.01,
             "minDistance": 10,
             "winSize": (21, 21),
+            "VVSlambda": 1.15215,
             "iterative_params": {
                 "turning": {
                     "confidence": 0.99,
@@ -49,6 +50,7 @@ def get_k_params_imgs(dataset):
             "minDistance": 10,
             "dist_threshold_move": 0,
             "winSize": (11, 11),
+            "VVSlambda": 1.15215,
             "RANSAC_threshold": 0.5,
             "repro_threshold": 1.0,
             "iterative_params": {

@@ -247,7 +247,8 @@ class ContinuousVO:
                 None,  # No distortion coefficients
                 rvec,
                 tvec,
-                criteria
+                criteria,
+                VVSlambda=1.152155  # 1.15216
             )
 
             # Calculate refined reprojection error
