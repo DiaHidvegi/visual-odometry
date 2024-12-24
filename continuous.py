@@ -190,6 +190,13 @@ class ContinuousVO:
                 raise ValueError(
                     f"Pose estimation failed: {len(inliers) if inliers is not None else 0} inliers")
 
+            # Refine pose using Gauss-Newton optimization
+            rvec, tvec = self._refine_pose(
+                points3D[inliers.flatten()],
+                points2D[inliers.flatten()],
+                rvec, tvec
+            )
+
             # Calculate Reprojectionerror for monitoring
             error = self._calculate_reprojection_error(
                 points3D[inliers.flatten()],
@@ -209,6 +216,57 @@ class ContinuousVO:
 
         except cv2.error as e:
             raise ValueError(f"OpenCV error during pose estimation: {str(e)}")
+
+    def _refine_pose(self, points3D: np.ndarray, points2D: np.ndarray,
+                     rvec: np.ndarray, tvec: np.ndarray,
+                     num_iterations: int = 10) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Refine pose estimation using Gauss-Newton optimization.
+        """
+        # Create copies to avoid modifying the original arrays
+        rvec = rvec.copy()
+        tvec = tvec.copy()
+
+        try:
+            for _ in range(num_iterations):
+                # Project points using current pose estimate
+                projected_points, jacobian = cv2.projectPoints(
+                    points3D, rvec, tvec, self.K, None)
+                projected_points = projected_points.reshape(-1, 2)
+
+                # Compute residuals
+                residuals = (points2D - projected_points).reshape(-1, 1)
+
+                # Extract the pose-related part of the Jacobian (first 6 columns)
+                J = jacobian[:, :6]
+
+                # Solve normal equations
+                try:
+                    H = J.T @ J  # This will now be 6x6
+                    b = J.T @ residuals
+
+                    # Add damping factor for numerical stability
+                    H += np.eye(6) * 1e-8
+
+                    # Compute update step
+                    delta = np.linalg.solve(H, b).flatten()
+
+                    # Update pose parameters
+                    rvec += delta[:3].reshape(3, 1)
+                    tvec += delta[3:].reshape(3, 1)
+
+                    # Check convergence
+                    if np.linalg.norm(delta) < 1e-7:
+                        break
+
+                except np.linalg.LinAlgError:
+                    break
+
+        except Exception as e:
+            print(f"Pose refinement failed: {str(e)}")
+            return rvec, tvec
+
+        return rvec, tvec
 
     def _compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
         """
