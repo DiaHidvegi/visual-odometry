@@ -25,7 +25,7 @@ cv2.setRNGSeed(SEED)
 class Config:
     dataset: str
     max_frames: int = 1000
-    visualization_delay: float = 0.01
+    visualization_delay: float = 0
 
     def __post_init__(self):
         # set number of frames depending on the dataset
@@ -105,6 +105,8 @@ def main(ds: str) -> None:
 
     try:
         for frame_idx in range(1, config.max_frames):
+            if frame_idx == 596:
+                print("Stopping at frame")
             try:
                 # Load and process images
                 img_prev, img_current = image_loader.load_images(frame_idx)
@@ -120,7 +122,8 @@ def main(ds: str) -> None:
                 raise e
 
     finally:
-        visualizer.close()
+        # visualizer.close()
+        pass
 
 
 if __name__ == "__main__":
@@ -132,7 +135,7 @@ if __name__ == "__main__":
         "-d", "--dataset",
         type=str,
         required=False,
-        default="kitti",
+        default="parking",
         help="Name of the dataset (malaga, kitti, parking)"
     )
 

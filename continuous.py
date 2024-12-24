@@ -175,7 +175,7 @@ class ContinuousVO:
 
         # Detect turn and get pose parameters accordingly
         turning = self._detect_turn(mean_movement, point_count)
-        pose_params = self._get_pose_params(turning)
+        pose_params = self._get_pose_params(True)
 
         try:
             success, rvec, tvec, inliers = cv2.solvePnPRansac(
@@ -204,8 +204,9 @@ class ContinuousVO:
                 rvec, tvec
             )
 
-            print(f"Points: {point_count}, Inliers: {len(inliers)}, "
-                  f"Error: {round(error, 2)}, Movement: {round(mean_movement)}, "
+            print(f"Point/Movement: {(point_count/mean_movement):.4f}, Points: {point_count}, Movement: {mean_movement:.2f}, "
+                  f"Inliers: {len(inliers)}, "
+                  f"Reprojection Error: {error:.2f}, "
                   f"Status: {'TURNING' if turning else 'STRAIGHT'}")
 
             pose = self._create_pose_matrix(rvec, tvec)
@@ -218,55 +219,53 @@ class ContinuousVO:
             raise ValueError(f"OpenCV error during pose estimation: {str(e)}")
 
     def _refine_pose(self, points3D: np.ndarray, points2D: np.ndarray,
-                     rvec: np.ndarray, tvec: np.ndarray,
-                     num_iterations: int = 10) -> Tuple[np.ndarray, np.ndarray]:
+                     rvec: np.ndarray, tvec: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Refine pose estimation using Gauss-Newton optimization.
+        Refine pose estimation using Virtual Visual Servoing.
+
+        Args:
+            points3D: 3D points in world coordinates (Nx3)
+            points2D: 2D points in image coordinates (Nx2)
+            rvec: Initial rotation vector
+            tvec: Initial translation vector
+
+        Returns:
+            Tuple of refined rotation vector and translation vector
         """
-        # Create copies to avoid modifying the original arrays
-        rvec = rvec.copy()
-        tvec = tvec.copy()
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 20, 1e-6)
 
         try:
-            for _ in range(num_iterations):
-                # Project points using current pose estimate
-                projected_points, jacobian = cv2.projectPoints(
-                    points3D, rvec, tvec, self.K, None)
-                projected_points = projected_points.reshape(-1, 2)
+            # Calculate initial reprojection error
+            initial_error = self._calculate_reprojection_error(
+                points3D, points2D, rvec, tvec)
 
-                # Compute residuals
-                residuals = (points2D - projected_points).reshape(-1, 1)
+            # Try refinement
+            refined_rvec, refined_tvec = cv2.solvePnPRefineVVS(
+                points3D,
+                points2D,
+                self.K,
+                None,  # No distortion coefficients
+                rvec,
+                tvec,
+                criteria
+            )
 
-                # Extract the pose-related part of the Jacobian (first 6 columns)
-                J = jacobian[:, :6]
+            # Calculate refined reprojection error
+            refined_error = self._calculate_reprojection_error(
+                points3D, points2D, refined_rvec, refined_tvec)
 
-                # Solve normal equations
-                try:
-                    H = J.T @ J  # This will now be 6x6
-                    b = J.T @ residuals
-
-                    # Add damping factor for numerical stability
-                    H += np.eye(6) * 1e-8
-
-                    # Compute update step
-                    delta = np.linalg.solve(H, b).flatten()
-
-                    # Update pose parameters
-                    rvec += delta[:3].reshape(3, 1)
-                    tvec += delta[3:].reshape(3, 1)
-
-                    # Check convergence
-                    if np.linalg.norm(delta) < 1e-7:
-                        break
-
-                except np.linalg.LinAlgError:
-                    break
+            # Use refined pose only if it improves the error
+            if refined_error < initial_error:
+                print("Refined pose is better")
+                return refined_rvec, refined_tvec
+            else:
+                print(
+                    f"VVS refinement increased error ({round(initial_error, 6)} -> {round(refined_error, 6)}, keeping original pose")
+                return rvec, tvec
 
         except Exception as e:
-            print(f"Pose refinement failed: {str(e)}")
+            print(f"VVS refinement failed: {str(e)}")
             return rvec, tvec
-
-        return rvec, tvec
 
     def _compute_baseline_angle(self, point3D: np.ndarray, t_cur: np.ndarray, t_first: np.ndarray) -> float:
         """
@@ -338,7 +337,7 @@ class ContinuousVO:
         Returns:
             bool: True if camera is turning, False otherwise.
         """
-        return (mean_movement < 70) or (point_count < 50 and mean_movement < 90)
+        return (mean_movement < 70) or (point_count < 50 and mean_movement < 70)
 
     def _get_pose_params(self, turning: bool) -> Dict[str, float]:
         """

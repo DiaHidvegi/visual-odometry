@@ -57,8 +57,8 @@ def get_k_params_imgs(dataset):
                     "reprojection_error": 2.5
                 },
                 "straight": {
-                    "confidence": 0.99,
-                    "reprojection_error": 0.7
+                    "confidence": 0.995,
+                    "reprojection_error": 0.34
                 }
             }
         },
