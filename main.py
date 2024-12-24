@@ -122,8 +122,7 @@ def main(ds: str) -> None:
                 raise e
 
     finally:
-        # visualizer.close()
-        pass
+        visualizer.close()
 
 
 if __name__ == "__main__":

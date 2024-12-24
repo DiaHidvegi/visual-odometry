@@ -40,12 +40,12 @@ def get_k_params_imgs(dataset):
                 },
                 "straight": {
                     "confidence": 0.99,
-                    "reprojection_error": 1.15
+                    "reprojection_error": 0.8
                 }
             },
-            "refinement_max_iterations": 10,
+            "refinement_max_iterations": 5,
             "refinement_epsilon": 1e-5,
-            "refinement_VVSlambda": 0.5,
+            "refinement_VVSlambda": 0.9,
         },
         "parking": {
             "maxCorners": 1000,
