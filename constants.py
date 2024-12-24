@@ -35,7 +35,7 @@ def get_k_params_imgs(dataset):
             "VVSlambda": 1.15215,
             "pose": {
                 "confidence": 0.99,
-                "reprojection_error": 0.8
+                "reprojection_error": 2.5
             },
             "refinement_max_iterations": 5,
             "refinement_epsilon": 1e-5,
@@ -50,8 +50,8 @@ def get_k_params_imgs(dataset):
             "RANSAC_threshold": 0.5,
             "repro_threshold": 1.0,
             "pose": {
-                "confidence": 0.995,
-                "reprojection_error": 0.34
+                "confidence": 0.99,
+                "reprojection_error": 2.5
             },
             "refinement_max_iterations": 20,
             "refinement_epsilon": 1e-6,
@@ -68,7 +68,7 @@ def get_k_params_imgs(dataset):
             "repro_threshold": 5.0,
             "pose": {
                 "confidence": 0.99,
-                "reprojection_error": 1.5
+                "reprojection_error": 3.0
             },
             "refinement_max_iterations": 5,
             "refinement_epsilon": 1e-6,
