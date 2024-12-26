@@ -86,6 +86,24 @@ The pipeline provides real-time visualization with four panels:
 - Global trajectory.
 - Local trajectory with visible landmarks.
 
+## Screencasts
+The pipeline has been tested on the previously mentioned three datasets Parking, KITTI and Malaga. The links to the screencasts (YouTube links) as well as the links to download the datasets are provided in the following table.
+
+| **Dataset** | **Link to Screencast**                           | **Dataset Download Link**                                                                                       |
+|-------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| Parking     | [https://youtu.be/21qXO7S11wA](https://youtu.be/21qXO7S11wA) | [Download](https://rpg.ifi.uzh.ch/docs/teaching/2024/parking.zip)       |
+| KITTI       | [https://youtu.be/bQ9UpPFiB0k](https://youtu.be/bQ9UpPFiB0k) | [Download](https://rpg.ifi.uzh.ch/docs/teaching/2024/kitti05.zip)         |
+| Malaga      | [https://youtu.be/dmmEDB3kfuk](https://youtu.be/dmmEDB3kfuk) | [Download](https://rpg.ifi.uzh.ch/docs/teaching/2024/malaga-urban-dataset-extract-07.zip) |
+
+The screencasts are recorded on a PC with the following hardware specifications:
+|                         | MacBook Pro 13-inch, 2020 |
+|:------------------------|:--------------------------|
+| **CPU**                | Apple M1                 |
+| **RAM**                | 16 GB               |
+| **OS**                 | macOS Sonoma 14.6.1      |
+| **# threads**          | 1                        |
+
+
 ## Troubleshooting
 
 If you encounter any issues:
