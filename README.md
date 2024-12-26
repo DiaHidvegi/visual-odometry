@@ -87,7 +87,7 @@ The pipeline provides real-time visualization with four panels:
 - Local trajectory with visible landmarks.
 
 ## Screencasts
-The pipeline has been tested on the previously mentioned three datasets Parking, KITTI and Malaga. The links to the screencasts (YouTube links) as well as the links to download the datasets are provided in the following table.
+The pipeline has been tested on the previously mentioned three datasets Parking, KITTI and Malaga. The links to the screencasts (YouTube links) as well as the links to download the datasets are provided in the following table:
 
 | **Dataset** | **Link to Screencast**                           | **Dataset Download Link**                                                                                       |
 |-------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------|
